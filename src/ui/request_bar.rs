@@ -1,7 +1,7 @@
 use gtk::prelude::*;
 use gtk::{Box, Button, DropDown, Entry, Orientation, StringList};
 
-pub fn build() -> Box {
+pub fn build() -> (Box, Entry, DropDown, Button) {
     // a horizontal box with 12px spacing
     let container = Box::new(Orientation::Horizontal, 12);
     container.set_margin_top(12);
@@ -22,5 +22,5 @@ pub fn build() -> Box {
     container.append(&url_entry);
     container.append(&send_button);
 
-    container
+    (container, url_entry, method_dropdown, send_button)
 }

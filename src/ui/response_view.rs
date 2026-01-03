@@ -1,13 +1,22 @@
 use gtk::{Box, Orientation};
 use gtk::{ScrolledWindow, prelude::*};
 use sourceview5::prelude::*;
-use sourceview5::{Buffer, View};
+use sourceview5::{Buffer, StyleSchemeManager, View};
 
-pub fn build() -> Box {
+pub fn build() -> (Box, Buffer) {
     let container = Box::new(Orientation::Vertical, 0);
 
     let buffer = Buffer::new(None);
     buffer.set_text("{\n  \"status\": \"ready\",\n  \"message\": \"Hit Send to fetch data...\"\n}");
+
+    let style_manager = StyleSchemeManager::default();
+    let scheme = style_manager
+        .scheme("Adwaita-dark")
+        .or_else(|| style_manager.scheme("oblivion"));
+
+    if let Some(s) = scheme {
+        buffer.set_style_scheme(Some(&s));
+    }
 
     let view = View::with_buffer(&buffer);
     view.set_monospace(true);
@@ -26,5 +35,5 @@ pub fn build() -> Box {
 
     container.append(&scrolled_window);
 
-    container
+    (container, buffer)
 }
