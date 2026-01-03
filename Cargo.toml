@@ -7,3 +7,5 @@ edition = "2024"
 gtk = { version = "0.9", package = "gtk4", features = ["v4_10"] }
 
 adw = { version = "0.7", package = "libadwaita", features = ["v1_6"] }
+
+sourceview5 = "0.9"

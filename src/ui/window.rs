@@ -4,7 +4,7 @@ use adw::{
 };
 use gtk::{Box, Label, Orientation};
 
-use super::{request_bar, sidebar};
+use super::{request_bar, response_view, sidebar};
 
 pub fn build(app: &Application) {
     let sidebar_content = sidebar::build();
@@ -16,9 +16,8 @@ pub fn build(app: &Application) {
     let request_bar_widget = request_bar::build();
     main_content.append(&request_bar_widget);
 
-    let response_placeholder = Label::new(Some("Response will appear here"));
-    response_placeholder.set_vexpand(true);
-    main_content.append(&response_placeholder);
+    let response_view_widget = response_view::build();
+    main_content.append(&response_view_widget);
 
     let split_view = OverlaySplitView::builder()
         .sidebar(&sidebar_content)
