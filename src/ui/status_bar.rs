@@ -1,0 +1,50 @@
+use gtk::{Box, Label};
+use gtk::{Separator, prelude::*};
+
+pub struct StatusBarWidgets {
+    pub container: Box,
+    pub status_label: Label,
+    pub time_label: Label,
+    pub size_label: Label,
+}
+pub fn build() -> StatusBarWidgets {
+    let container = Box::new(gtk::Orientation::Horizontal, 12);
+    container.set_margin_top(12);
+    container.set_margin_bottom(12);
+    container.set_margin_start(12);
+    container.set_margin_end(12);
+
+    // "200 OK"
+    let status_label = Label::new(Some("-"));
+    status_label.add_css_class("title-4");
+
+    // "150ms"
+    let time_label = Label::new(Some("- ms"));
+
+    // "200 KB"
+    let size_label = Label::new(Some("- KB"));
+
+    // "[Status: 200 OK] | [Time: 150 ms"] | [Size: 200 KB]"
+
+    fn add_pair(box_container: &Box, title: &str, value_label: &Label) {
+        let label_title = Label::new(Some(&title));
+        label_title.add_css_class("dim-label");
+        box_container.append(&label_title);
+        box_container.append(value_label);
+    }
+
+    add_pair(&container, "Status: ", &status_label);
+    container.append(&Separator::new(gtk::Orientation::Vertical));
+
+    add_pair(&container, "Time: ", &time_label);
+    container.append(&Separator::new(gtk::Orientation::Vertical));
+
+    add_pair(&container, "Size: ", &size_label);
+
+    StatusBarWidgets {
+        container,
+        status_label,
+        time_label,
+        size_label,
+    }
+}

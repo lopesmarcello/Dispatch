@@ -1,6 +1,7 @@
 use adw::Application;
 use adw::prelude::*;
 
+mod api;
 mod ui;
 
 fn main() {
