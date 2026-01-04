@@ -4,11 +4,22 @@ use adw::{
 };
 use glib;
 use gtk::{Box, Orientation};
-use std::thread;
+use sourceview5::Buffer;
 
 use super::dispatcher::{AppAction, Dispatcher};
 use super::{request_bar, request_tabs, response_view, sidebar, status_bar};
 use crate::api;
+
+#[derive(Clone)]
+struct WindowWidgets {
+    url_entry: gtk::Entry,
+    method_dropdown: gtk::DropDown,
+    request_body_buffer: Buffer,
+    response_buffer: Buffer,
+    status_label: gtk::Label,
+    time_label: gtk::Label,
+    size_label: gtk::Label,
+}
 
 pub fn build(app: &Application) {
     let sidebar_content = sidebar::build();
@@ -20,7 +31,7 @@ pub fn build(app: &Application) {
     let (req_bar_container, url_entry, method_dropdown, send_button) = request_bar::build();
     main_content.append(&req_bar_container);
 
-    let (req_tabs_widget, req_body_buffer) = request_tabs::build();
+    let (req_tabs_widget, request_body_buffer) = request_tabs::build();
 
     let status_widget = status_bar::build();
 
@@ -38,23 +49,26 @@ pub fn build(app: &Application) {
 
     main_content.append(&paned);
 
-    let req_body_buffer = req_body_buffer.clone();
-    let buffer = response_buffer.clone();
-    let entry = url_entry.clone();
-    let method_dropdown = method_dropdown.clone();
+    let widgets = WindowWidgets {
+        url_entry,
+        method_dropdown,
+        request_body_buffer,
+        response_buffer,
+        status_label: status_widget.status_label,
+        time_label: status_widget.time_label,
+        size_label: status_widget.size_label,
+    };
 
-    let status_label = status_widget.status_label.clone();
-    let time_label = status_widget.time_label.clone();
-    let size_label = status_widget.size_label.clone();
+    let w = widgets.clone();
 
     send_button.connect_clicked(move |_| {
-        let url = entry.text().to_string();
+        let url = w.url_entry.text().to_string();
 
         if url.is_empty() {
             return;
         }
 
-        let selected_method = method_dropdown.selected();
+        let selected_method = w.method_dropdown.selected();
         let method_str = match selected_method {
             0 => "GET",
             1 => "POST",
@@ -65,8 +79,9 @@ pub fn build(app: &Application) {
         }
         .to_string();
 
-        let (buffer_start, buffer_end) = req_body_buffer.bounds();
-        let body_text = req_body_buffer
+        let (buffer_start, buffer_end) = w.request_body_buffer.bounds();
+        let body_text = w
+            .request_body_buffer
             .text(&buffer_start, &buffer_end, true)
             .to_string();
 
@@ -79,23 +94,20 @@ pub fn build(app: &Application) {
             sender,
         });
 
-        let buffer_clone = buffer.clone();
-        let status_lbl = status_label.clone();
-        let time_lbl = time_label.clone();
-        let size_lbl = size_label.clone();
+        let w_inner = w.clone();
 
         receiver.attach(None, move |res: api::RequestResult| {
-            buffer_clone.set_text(&res.body);
-            status_lbl.set_text(&res.status);
-            time_lbl.set_text(&res.time);
-            size_lbl.set_text(&res.size);
+            w_inner.response_buffer.set_text(&res.body);
+            w_inner.status_label.set_text(&res.status);
+            w_inner.time_label.set_text(&res.time);
+            w_inner.size_label.set_text(&res.size);
 
             if res.is_error {
-                status_lbl.add_css_class("error");
-                status_lbl.remove_css_class("sucess");
+                w_inner.status_label.add_css_class("error");
+                w_inner.status_label.remove_css_class("sucess");
             } else {
-                status_lbl.add_css_class("sucess");
-                status_lbl.remove_css_class("error");
+                w_inner.status_label.add_css_class("sucess");
+                w_inner.status_label.remove_css_class("error");
             }
 
             glib::ControlFlow::Break
