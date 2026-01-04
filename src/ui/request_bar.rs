@@ -7,6 +7,7 @@ pub fn build() -> (Box, Entry, DropDown, Button) {
     container.set_margin_top(12);
     container.set_margin_start(12);
     container.set_margin_end(12);
+    container.set_margin_bottom(12);
 
     let methods = StringList::new(&["GET", "POST", "PUT", "PATCH", "DELETE"]);
     let method_dropdown = DropDown::new(Some(methods), gtk::Expression::NONE);
