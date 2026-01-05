@@ -4,4 +4,5 @@ pub mod request_tabs;
 pub mod response_view;
 pub mod sidebar;
 pub mod status_bar;
+pub mod styles;
 pub mod window;

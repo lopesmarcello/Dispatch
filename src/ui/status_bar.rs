@@ -1,4 +1,4 @@
-use gtk::{Box, Label};
+use gtk::{Box, Label, Spinner};
 use gtk::{Separator, prelude::*};
 
 pub struct StatusBarWidgets {
@@ -6,13 +6,18 @@ pub struct StatusBarWidgets {
     pub status_label: Label,
     pub time_label: Label,
     pub size_label: Label,
+    pub spinner: Spinner,
 }
 pub fn build() -> StatusBarWidgets {
     let container = Box::new(gtk::Orientation::Horizontal, 12);
-    container.set_margin_top(12);
-    container.set_margin_bottom(12);
+    container.set_margin_top(8);
+    container.set_margin_bottom(8);
     container.set_margin_start(12);
     container.set_margin_end(12);
+
+    let spinner = Spinner::new();
+    spinner.set_visible(false);
+    container.append(&spinner);
 
     // "200 OK"
     let status_label = Label::new(Some("-"));
@@ -46,5 +51,6 @@ pub fn build() -> StatusBarWidgets {
         status_label,
         time_label,
         size_label,
+        spinner,
     }
 }

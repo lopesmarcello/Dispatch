@@ -8,7 +8,7 @@ use sourceview5::Buffer;
 
 use super::dispatcher::{AppAction, Dispatcher};
 use super::{request_bar, request_tabs, response_view, sidebar, status_bar};
-use crate::api;
+use crate::{api, config};
 
 #[derive(Clone)]
 struct WindowWidgets {
@@ -19,10 +19,11 @@ struct WindowWidgets {
     status_label: gtk::Label,
     time_label: gtk::Label,
     size_label: gtk::Label,
+    spinner: gtk::Spinner,
 }
 
 pub fn build(app: &Application) {
-    let sidebar_content = sidebar::build();
+    let (sidebar_content, sidebar_widgets) = sidebar::build();
     let main_content = Box::new(Orientation::Vertical, 0);
 
     let main_header = HeaderBar::new();
@@ -57,9 +58,37 @@ pub fn build(app: &Application) {
         status_label: status_widget.status_label,
         time_label: status_widget.time_label,
         size_label: status_widget.size_label,
+        spinner: status_widget.spinner,
     };
 
     let w = widgets.clone();
+
+    let w_sidebar = widgets.clone();
+    sidebar_widgets
+        .list_box
+        .connect_row_activated(move |_, row| {
+            // TODO: takeoff hardccoded values
+
+            let index = row.index();
+            let (method, url) = match index {
+                0 => ("GET", "https://httpbin.org/get"),
+                1 => ("POST", "https://httpbin.org/post"),
+                2 => ("DELETE", "https://httpbin.org/delete"),
+                _ => ("GET", ""),
+            };
+
+            w_sidebar.url_entry.set_text(url);
+
+            let method_index = match method {
+                "GET" => 0,
+                "POST" => 1,
+                "PATCH" => 2,
+                "PUT" => 3,
+                "DELETE" => 4,
+                _ => 0,
+            };
+            w_sidebar.method_dropdown.set_selected(method_index);
+        });
 
     send_button.connect_clicked(move |_| {
         let url = w.url_entry.text().to_string();
@@ -67,6 +96,12 @@ pub fn build(app: &Application) {
         if url.is_empty() {
             return;
         }
+
+        w.spinner.set_visible(true);
+        w.spinner.start();
+        w.status_label.set_text("Sending...");
+        w.status_label.remove_css_class("error");
+        w.status_label.remove_css_class("success");
 
         let selected_method = w.method_dropdown.selected();
         let method_str = match selected_method {
@@ -97,6 +132,9 @@ pub fn build(app: &Application) {
         let w_inner = w.clone();
 
         receiver.attach(None, move |res: api::RequestResult| {
+            w_inner.spinner.stop();
+            w_inner.spinner.set_visible(false);
+
             w_inner.response_buffer.set_text(&res.body);
             w_inner.status_label.set_text(&res.status);
             w_inner.time_label.set_text(&res.time);
@@ -117,13 +155,13 @@ pub fn build(app: &Application) {
     let split_view = OverlaySplitView::builder()
         .sidebar(&sidebar_content)
         .content(&main_content)
-        .sidebar_width_fraction(0.25)
-        .min_sidebar_width(200.0)
+        .sidebar_width_fraction(config::SIDEBAR_WIDTH_FRACTION)
+        .min_sidebar_width(config::MIN_SIDEBAR_WIDTH)
         .build();
 
     let breakpoint = Breakpoint::new(BreakpointCondition::new_length(
         adw::BreakpointConditionLengthType::MaxWidth,
-        600.0,
+        config::BREAKPOINT_WIDTH,
         adw::LengthUnit::Px,
     ));
     breakpoint.add_setter(&split_view, "collapsed", Some(&true.to_value()));
@@ -131,8 +169,8 @@ pub fn build(app: &Application) {
     let window = ApplicationWindow::builder()
         .application(app)
         .title("Dispatch")
-        .default_width(900)
-        .default_height(600)
+        .default_width(config::WINDOW_DEFAULT_WIDTH)
+        .default_height(config::WINDOW_DEFAULT_HEIGHT)
         .content(&split_view)
         .build();
 

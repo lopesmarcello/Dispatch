@@ -1,19 +1,74 @@
-use adw::HeaderBar;
-use adw::prelude::*;
-use gtk::{Box, Label, Orientation, prelude::BoxExt};
+use gtk::{Box, Button, Label, ListBox, ListBoxRow, Orientation, ScrolledWindow, prelude::*};
 
-pub fn build() -> Box {
+use crate::config;
+
+pub struct SidebarWidgets {
+    pub list_box: ListBox,
+}
+
+pub fn build() -> (Box, SidebarWidgets) {
     let container = Box::new(Orientation::Vertical, 0);
 
-    let header = HeaderBar::new();
-    header.set_show_end_title_buttons(false);
-    header.set_show_start_title_buttons(false);
+    let header_box = Box::new(Orientation::Horizontal, 0);
+    header_box.set_margin_top(12);
+    header_box.set_margin_bottom(12);
+    header_box.set_margin_start(12);
+    header_box.set_margin_end(12);
 
-    container.append(&header);
+    let title = Label::new(Some("History"));
+    title.add_css_class("heading");
+    title.set_hexpand(true);
+    title.set_xalign(0.0);
 
-    let label = Label::new(Some("History & Collections"));
-    label.set_vexpand(true);
-    container.append(&label);
+    let clear_btn = Button::builder()
+        .icon_name("edit-delete-symbolic")
+        .css_classes(vec!["flat".to_string()])
+        .tooltip_text("Clear History")
+        .build();
 
-    container
+    header_box.append(&title);
+    header_box.append(&clear_btn);
+    container.append(&header_box);
+
+    let list_box = ListBox::new();
+    list_box.add_css_class("navigation-sidebar");
+
+    add_history_row(&list_box, "GET", "https://httpbin.org/get");
+    add_history_row(&list_box, "POST", "https://httpbin.org/post");
+    add_history_row(&list_box, "DELETE", "https://httpbin.org/delete");
+
+    let scrolled = ScrolledWindow::builder()
+        .hscrollbar_policy(gtk::PolicyType::Never)
+        .min_content_height(400)
+        .child(&list_box)
+        .vexpand(true)
+        .build();
+
+    container.append(&scrolled);
+
+    (container, SidebarWidgets { list_box })
+}
+
+fn add_history_row(list: &ListBox, method: &str, url: &str) {
+    let row = ListBoxRow::new();
+    let row_box = Box::new(Orientation::Horizontal, 12);
+    row_box.set_margin_top(12);
+    row_box.set_margin_bottom(12);
+    row_box.set_margin_start(12);
+    row_box.set_margin_end(12);
+
+    let method_label = Label::new(Some(method));
+    method_label.add_css_class(config::get_badge_class(method));
+
+    let url_label = Label::new(Some(url));
+    url_label.set_ellipsize(gtk::pango::EllipsizeMode::End);
+    url_label.set_hexpand_set(true);
+    url_label.set_xalign(0.0);
+
+    row_box.append(&method_label);
+    row_box.append(&url_label);
+
+    row.set_child(Some(&row_box));
+
+    list.append(&row);
 }
