@@ -1,6 +1,9 @@
-use reqwest::blocking::Client;
+use reqwest::{
+    blocking::Client,
+    header::{HeaderMap, HeaderName, HeaderValue},
+};
 use serde_json::Value;
-use std::time::Instant;
+use std::{str::FromStr, time::Instant};
 
 pub struct RequestResult {
     pub body: String,
@@ -10,15 +13,29 @@ pub struct RequestResult {
     pub is_error: bool,
 }
 
-pub fn perform_request(method: &str, url: &str, body: &str) -> RequestResult {
+pub fn perform_request(
+    method: &str,
+    url: &str,
+    body: &str,
+    headers_vec: Vec<(String, String)>,
+) -> RequestResult {
     let client = Client::new();
+
+    let mut headers = HeaderMap::new();
+    for (key, value) in headers_vec {
+        if let Ok(h_name) = HeaderName::from_str(&key) {
+            if let Ok(h_val) = HeaderValue::from_str(&value) {
+                headers.insert(h_name, h_val);
+            }
+        }
+    }
 
     let request_builder = match method {
         "POST" => client.post(url).body(body.to_string()),
         "PUT" => client.put(url).body(body.to_string()),
         "PATCH" => client.patch(url).body(body.to_string()),
         "DELETE" => client.delete(url),
-        _ => client.get(url),
+        _ => client.get(url).headers(headers),
     };
 
     let start_time = Instant::now();

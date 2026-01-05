@@ -1,6 +1,6 @@
 use gtk::{Box, Button, Label, ListBox, ListBoxRow, Orientation, ScrolledWindow, prelude::*};
 
-use crate::config;
+use crate::{config, ui::helpers::add_box_margins};
 
 pub struct SidebarWidgets {
     pub list_box: ListBox,
@@ -10,10 +10,7 @@ pub fn build() -> (Box, SidebarWidgets) {
     let container = Box::new(Orientation::Vertical, config::SPACING_NONE);
 
     let header_box = Box::new(Orientation::Horizontal, config::SPACING_NONE);
-    header_box.set_margin_top(config::SPACING_MEDIUM);
-    header_box.set_margin_bottom(config::SPACING_MEDIUM);
-    header_box.set_margin_start(config::SPACING_MEDIUM);
-    header_box.set_margin_end(config::SPACING_MEDIUM);
+    add_box_margins(&header_box, config::SPACING_MEDIUM);
 
     let title = Label::new(Some("History"));
     title.add_css_class("heading");
@@ -52,10 +49,7 @@ pub fn build() -> (Box, SidebarWidgets) {
 fn add_history_row(list: &ListBox, method: &str, url: &str) {
     let row = ListBoxRow::new();
     let row_box = Box::new(Orientation::Horizontal, config::SPACING_MEDIUM);
-    row_box.set_margin_top(config::SPACING_MEDIUM);
-    row_box.set_margin_bottom(config::SPACING_MEDIUM);
-    row_box.set_margin_start(config::SPACING_MEDIUM);
-    row_box.set_margin_end(config::SPACING_MEDIUM);
+    add_box_margins(&row_box, config::SPACING_MEDIUM);
 
     let method_label = Label::new(Some(method));
     method_label.add_css_class(config::get_badge_class(method));

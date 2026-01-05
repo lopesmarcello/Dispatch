@@ -24,6 +24,7 @@ pub const CLASS_ERROR: &str = "error";
 
 // Sizing
 pub const SPACING_NONE: i32 = 0;
+pub const SPACING_EXTRA_SMALL: i32 = 6;
 pub const SPACING_SMALL: i32 = 8;
 pub const SPACING_MEDIUM: i32 = 12;
 
@@ -46,7 +47,6 @@ pub const FONT_WEIGHT_HEADING: i32 = 800;
 pub const FONT_SIZE_HEADING: i32 = 14;
 
 pub const OPACITY_HEADING: f64 = 0.8;
-
 
 pub fn get_badge_class(method: &str) -> &'static str {
     match method {

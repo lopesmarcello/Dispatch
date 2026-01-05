@@ -8,6 +8,7 @@ use sourceview5::Buffer;
 
 use super::dispatcher::{AppAction, Dispatcher};
 use super::{request_bar, request_tabs, response_view, sidebar, status_bar};
+use crate::ui::key_value_editor::KeyValueEditor;
 use crate::{api, config};
 
 #[derive(Clone)]
@@ -20,6 +21,7 @@ struct WindowWidgets {
     time_label: gtk::Label,
     size_label: gtk::Label,
     spinner: gtk::Spinner,
+    headers_editor: KeyValueEditor,
 }
 
 pub fn build(app: &Application) {
@@ -32,7 +34,7 @@ pub fn build(app: &Application) {
     let (req_bar_container, url_entry, method_dropdown, send_button) = request_bar::build();
     main_content.append(&req_bar_container);
 
-    let (req_tabs_widget, request_body_buffer) = request_tabs::build();
+    let (req_tabs_widget, request_body_buffer, headers_editor) = request_tabs::build();
 
     let status_widget = status_bar::build();
 
@@ -59,6 +61,7 @@ pub fn build(app: &Application) {
         time_label: status_widget.time_label,
         size_label: status_widget.size_label,
         spinner: status_widget.spinner,
+        headers_editor,
     };
 
     let w = widgets.clone();
@@ -120,6 +123,8 @@ pub fn build(app: &Application) {
             .text(&buffer_start, &buffer_end, true)
             .to_string();
 
+        let headers = w.headers_editor.get_data();
+
         let (sender, receiver) = glib::MainContext::channel(glib::Priority::DEFAULT);
 
         Dispatcher::dispatch(AppAction::SendRequest {
@@ -127,6 +132,7 @@ pub fn build(app: &Application) {
             url,
             body: body_text,
             sender,
+            headers,
         });
 
         let w_inner = w.clone();

@@ -6,6 +6,7 @@ pub enum AppAction {
         method: String,
         url: String,
         body: String,
+        headers: Vec<(String, String)>,
         sender: glib::Sender<api::RequestResult>,
     },
 }
@@ -20,8 +21,9 @@ impl Dispatcher {
                 url,
                 body,
                 sender,
+                headers,
             } => thread::spawn(move || {
-                let result = api::perform_request(&method, &url, &body);
+                let result = api::perform_request(&method, &url, &body, headers);
                 let _ = sender.send(result);
             }),
         };

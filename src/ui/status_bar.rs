@@ -1,4 +1,5 @@
 use crate::config;
+use crate::ui::helpers::add_box_margins;
 use gtk::{Box, Label, Spinner};
 use gtk::{Separator, prelude::*};
 
@@ -11,10 +12,9 @@ pub struct StatusBarWidgets {
 }
 pub fn build() -> StatusBarWidgets {
     let container = Box::new(gtk::Orientation::Horizontal, config::SPACING_MEDIUM);
+    add_box_margins(&container, config::SPACING_MEDIUM);
     container.set_margin_top(config::SPACING_SMALL);
     container.set_margin_bottom(config::SPACING_SMALL);
-    container.set_margin_start(config::SPACING_MEDIUM);
-    container.set_margin_end(config::SPACING_MEDIUM);
 
     let spinner = Spinner::new();
     spinner.set_visible(false);

@@ -1,8 +1,8 @@
-use crate::config;
+use crate::{config, ui::key_value_editor::KeyValueEditor};
 use gtk::{Box, Label, Notebook, Orientation, ScrolledWindow, prelude::*};
 use sourceview5::{Buffer, StyleSchemeManager, View, prelude::*};
 
-pub fn build() -> (Notebook, Buffer) {
+pub fn build() -> (Notebook, Buffer, KeyValueEditor) {
     let notebook = Notebook::new();
     notebook.set_vexpand(true);
 
@@ -37,9 +37,10 @@ pub fn build() -> (Notebook, Buffer) {
     let tab_label = Label::new(Some("Body (JSON)"));
     notebook.append_page(&body_box, Some(&tab_label));
 
+    let headers_editor = KeyValueEditor::new();
     let headers_label = Label::new(Some("Headers"));
-    let headers_placeholder = Label::new(Some("Headers coming soon..."));
-    notebook.append_page(&headers_placeholder, Some(&headers_label));
 
-    (notebook, buffer)
+    notebook.append_page(&headers_editor.container, Some(&headers_label));
+
+    (notebook, buffer, headers_editor)
 }

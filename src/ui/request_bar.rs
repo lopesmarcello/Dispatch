@@ -1,14 +1,12 @@
 use crate::config;
+use crate::ui::helpers::add_box_margins;
 use gtk::prelude::*;
 use gtk::{Box, Button, DropDown, Entry, Orientation, StringList};
 
 pub fn build() -> (Box, Entry, DropDown, Button) {
     // a horizontal box with 12px spacing
     let container = Box::new(Orientation::Horizontal, config::SPACING_MEDIUM);
-    container.set_margin_top(config::SPACING_MEDIUM);
-    container.set_margin_start(config::SPACING_MEDIUM);
-    container.set_margin_end(config::SPACING_MEDIUM);
-    container.set_margin_bottom(config::SPACING_MEDIUM);
+    add_box_margins(&container, config::SPACING_MEDIUM);
 
     let methods = StringList::new(&["GET", "POST", "PUT", "PATCH", "DELETE"]);
     let method_dropdown = DropDown::new(Some(methods), gtk::Expression::NONE);
