@@ -89,29 +89,27 @@ impl KeyValueEditor {
 
         self.rows.borrow_mut().push(row_data.clone());
 
-        // let rows_ref = self.rows.clone();
+        let rows_ref = self.rows.clone();
         let rows_box_ref = self.rows_box.clone();
         let container_ref = row_container.clone();
 
         del_btn.connect_clicked(move |_| {
             rows_box_ref.remove(&container_ref);
 
-            //TODO: remove from vector
+            rows_ref
+                .borrow_mut()
+                .retain(|row| row.container != container_ref)
         });
     }
 
     pub fn get_data(&self) -> Vec<(String, String)> {
         let mut data = Vec::new();
 
-        // TODO: return vector if is being update correctly by add_row
-
         for row in self.rows.borrow().iter() {
-            if row.container.parent().is_some() {
-                let k = row.key_entry.text().to_string();
-                let v = row.value_entry.text().to_string();
-                if !k.is_empty() {
-                    data.push((k, v))
-                }
+            let k = row.key_entry.text().to_string();
+            let v = row.value_entry.text().to_string();
+            if !k.is_empty() {
+                data.push((k, v))
             }
         }
         data
