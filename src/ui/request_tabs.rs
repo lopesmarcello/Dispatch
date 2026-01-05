@@ -1,3 +1,4 @@
+use crate::config;
 use gtk::{Box, Label, Notebook, Orientation, ScrolledWindow, prelude::*};
 use sourceview5::{Buffer, StyleSchemeManager, View, prelude::*};
 
@@ -5,13 +6,14 @@ pub fn build() -> (Notebook, Buffer) {
     let notebook = Notebook::new();
     notebook.set_vexpand(true);
 
-    let body_box = Box::new(Orientation::Vertical, 0);
+    let body_box = Box::new(Orientation::Vertical, config::SPACING_NONE);
 
     let buffer = Buffer::new(None);
     let style_manager = StyleSchemeManager::default();
     if let Some(s) = style_manager
-        .scheme("Adwaita-Dark")
-        .or_else(|| style_manager.scheme("oblivion"))
+        .scheme(config::EDITOR_SCHEME_PREF_1)
+        .or_else(|| style_manager.scheme(config::EDITOR_SCHEME_PREF_2))
+        .or_else(|| style_manager.scheme(config::EDITOR_SCHEME_PREF_3))
     {
         buffer.set_style_scheme(Some(&s));
     }
@@ -19,9 +21,9 @@ pub fn build() -> (Notebook, Buffer) {
     let view = View::with_buffer(&buffer);
     view.set_monospace(true);
     view.set_show_line_numbers(true);
-    view.set_top_margin(12);
-    view.set_left_margin(12);
-    view.set_bottom_margin(12);
+    view.set_top_margin(config::SPACING_MEDIUM);
+    view.set_left_margin(config::SPACING_MEDIUM);
+    view.set_bottom_margin(config::SPACING_MEDIUM);
 
     let scrolled = ScrolledWindow::builder()
         .hscrollbar_policy(gtk::PolicyType::Automatic)

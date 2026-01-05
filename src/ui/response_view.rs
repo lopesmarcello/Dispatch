@@ -1,18 +1,21 @@
+use crate::config;
 use gtk::{Box, Orientation};
 use gtk::{ScrolledWindow, prelude::*};
 use sourceview5::prelude::*;
 use sourceview5::{Buffer, StyleSchemeManager, View};
 
 pub fn build() -> (Box, Buffer) {
-    let container = Box::new(Orientation::Vertical, 0);
+    let container = Box::new(Orientation::Vertical, config::SPACING_NONE);
 
     let buffer = Buffer::new(None);
     buffer.set_text("{\n  \"status\": \"ready\",\n  \"message\": \"Hit Send to fetch data...\"\n}");
 
     let style_manager = StyleSchemeManager::default();
     let scheme = style_manager
-        .scheme("Adwaita-dark")
-        .or_else(|| style_manager.scheme("oblivion"));
+        .scheme(config::EDITOR_SCHEME_PREF_1)
+        .or_else(|| style_manager.scheme(config::EDITOR_SCHEME_PREF_2))
+        .or_else(|| style_manager.scheme(config::EDITOR_SCHEME_PREF_3));
+
 
     if let Some(s) = scheme {
         buffer.set_style_scheme(Some(&s));
@@ -22,9 +25,9 @@ pub fn build() -> (Box, Buffer) {
     view.set_monospace(true);
     view.set_show_line_numbers(true);
     view.set_editable(false);
-    view.set_top_margin(12);
-    view.set_bottom_margin(12);
-    view.set_left_margin(12);
+    view.set_top_margin(config::SPACING_MEDIUM);
+    view.set_bottom_margin(config::SPACING_MEDIUM);
+    view.set_left_margin(config::SPACING_MEDIUM);
 
     let scrolled_window = ScrolledWindow::builder()
         .hscrollbar_policy(gtk::PolicyType::Automatic)

@@ -45,7 +45,7 @@ pub fn build(app: &Application) {
     let paned = gtk::Paned::new(Orientation::Vertical);
     paned.set_start_child(Some(&req_tabs_widget));
     paned.set_end_child(Some(&response_area));
-    paned.set_position(250);
+    paned.set_position(config::REQUEST_PANE_POSITION);
     paned.set_vexpand(true);
 
     main_content.append(&paned);
@@ -100,8 +100,8 @@ pub fn build(app: &Application) {
         w.spinner.set_visible(true);
         w.spinner.start();
         w.status_label.set_text("Sending...");
-        w.status_label.remove_css_class("error");
-        w.status_label.remove_css_class("success");
+        w.status_label.remove_css_class(config::CLASS_ERROR);
+        w.status_label.remove_css_class(config::CLASS_SUCCESS);
 
         let selected_method = w.method_dropdown.selected();
         let method_str = match selected_method {
@@ -141,11 +141,11 @@ pub fn build(app: &Application) {
             w_inner.size_label.set_text(&res.size);
 
             if res.is_error {
-                w_inner.status_label.add_css_class("error");
-                w_inner.status_label.remove_css_class("sucess");
+                w_inner.status_label.add_css_class(config::CLASS_ERROR);
+                w_inner.status_label.remove_css_class(config::CLASS_SUCCESS);
             } else {
-                w_inner.status_label.add_css_class("sucess");
-                w_inner.status_label.remove_css_class("error");
+                w_inner.status_label.add_css_class(config::CLASS_SUCCESS);
+                w_inner.status_label.remove_css_class(config::CLASS_ERROR);
             }
 
             glib::ControlFlow::Break

@@ -1,20 +1,32 @@
+use crate::config;
 use gtk::gdk::Display;
 use gtk::{CssProvider, StyleContext};
 
-const APP_CSS: &str = "
-    .badge-get { background-color: #61affe; color: black; border-radius: 4px; padding: 2px 6px; font-weight: bold; }
-    .badge-post { background-color: #49cc90; color: black; border-radius: 4px; padding: 2px 6px; font-weight: bold; }
-    .badge-put { background-color: #fca130; color: black; border-radius: 4px; padding: 2px 6px; font-weight: bold; }
-    .badge-delete { background-color: #f93e3e; color: white; border-radius: 4px; padding: 2px 6px; font-weight: bold; }
-    .badge-patch { background-color: #50e3c2; color: black; border-radius: 4px; padding: 2px 6px; font-weight: bold; }
-    .badge-default { background-color: #999999; color: black; border-radius: 4px; padding: 2px 6px; font-weight: bold; }
-    
-    .sidebar .heading { font-weight: 800; font-size: 14px; opacity: 0.8; }
-";
+fn get_app_css() -> String {
+    format!(
+        "
+        .badge-get {{ background-color: {}; color: {}; border-radius: {}px; padding: {}px {}px; font-weight: {}; }}
+        .badge-post {{ background-color: {}; color: {}; border-radius: {}px; padding: {}px {}px; font-weight: {}; }}
+        .badge-put {{ background-color: {}; color: {}; border-radius: {}px; padding: {}px {}px; font-weight: {}; }}
+        .badge-delete {{ background-color: {}; color: {}; border-radius: {}px; padding: {}px {}px; font-weight: {}; }}
+        .badge-patch {{ background-color: {}; color: {}; border-radius: {}px; padding: {}px {}px; font-weight: {}; }}
+        .badge-default {{ background-color: {}; color: {}; border-radius: {}px; padding: {}px {}px; font-weight: {}; }}
+
+        .sidebar .heading {{ font-weight: {}; font-size: {}px; opacity: {}; }}
+    ",
+        config::COLOR_GET, config::COLOR_FG_DARK, config::BORDER_RADIUS_SMALL, config::PADDING_VERTICAL_SMALL, config::PADDING_HORIZONTAL_SMALL, config::FONT_WEIGHT_BOLD,
+        config::COLOR_POST, config::COLOR_FG_DARK, config::BORDER_RADIUS_SMALL, config::PADDING_VERTICAL_SMALL, config::PADDING_HORIZONTAL_SMALL, config::FONT_WEIGHT_BOLD,
+        config::COLOR_PUT, config::COLOR_FG_DARK, config::BORDER_RADIUS_SMALL, config::PADDING_VERTICAL_SMALL, config::PADDING_HORIZONTAL_SMALL, config::FONT_WEIGHT_BOLD,
+        config::COLOR_DELETE, config::COLOR_FG_LIGHT, config::BORDER_RADIUS_SMALL, config::PADDING_VERTICAL_SMALL, config::PADDING_HORIZONTAL_SMALL, config::FONT_WEIGHT_BOLD,
+        config::COLOR_PATCH, config::COLOR_FG_DARK, config::BORDER_RADIUS_SMALL, config::PADDING_VERTICAL_SMALL, config::PADDING_HORIZONTAL_SMALL, config::FONT_WEIGHT_BOLD,
+        config::COLOR_DEFAULT, config::COLOR_FG_DARK, config::BORDER_RADIUS_SMALL, config::PADDING_VERTICAL_SMALL, config::PADDING_HORIZONTAL_SMALL, config::FONT_WEIGHT_BOLD,
+        config::FONT_WEIGHT_HEADING, config::FONT_SIZE_HEADING, config::OPACITY_HEADING
+    )
+}
 
 pub fn load() {
     let provider = CssProvider::new();
-    provider.load_from_data(APP_CSS);
+    provider.load_from_data(&get_app_css());
 
     if let Some(display) = Display::default() {
         StyleContext::add_provider_for_display(
