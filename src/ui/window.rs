@@ -17,6 +17,7 @@ struct WindowWidgets {
     method_dropdown: gtk::DropDown,
     request_body_buffer: Buffer,
     response_buffer: Buffer,
+    response_headers_buffer: Buffer,
     status_label: gtk::Label,
     time_label: gtk::Label,
     size_label: gtk::Label,
@@ -38,7 +39,7 @@ pub fn build(app: &Application) {
 
     let status_widget = status_bar::build();
 
-    let (resp_view_container, response_buffer) = response_view::build();
+    let (resp_view_container, response_buffer, response_headers_buffer) = response_view::build();
 
     let response_area = Box::new(Orientation::Vertical, 0);
     response_area.append(&status_widget.container);
@@ -57,6 +58,7 @@ pub fn build(app: &Application) {
         method_dropdown,
         request_body_buffer,
         response_buffer,
+        response_headers_buffer,
         status_label: status_widget.status_label,
         time_label: status_widget.time_label,
         size_label: status_widget.size_label,
@@ -142,6 +144,7 @@ pub fn build(app: &Application) {
             w_inner.spinner.set_visible(false);
 
             w_inner.response_buffer.set_text(&res.body);
+            w_inner.response_headers_buffer.set_text(&res.headers);
             w_inner.status_label.set_text(&res.status);
             w_inner.time_label.set_text(&res.time);
             w_inner.size_label.set_text(&res.size);

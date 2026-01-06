@@ -11,6 +11,7 @@ pub struct RequestResult {
     pub time: String,
     pub size: String,
     pub is_error: bool,
+    pub headers: String,
 }
 
 pub fn perform_request(
@@ -47,6 +48,11 @@ pub fn perform_request(
             let status_code = response.status();
             let size = response.content_length().unwrap_or(0);
 
+            let mut headers_str = String::new();
+            for (key, value) in response.headers() {
+                headers_str.push_str(&format!("{}: {}\n", key, value.to_str().unwrap_or("")));
+            }
+
             // Pretty Print JSON
             let body_str = match response.json::<Value>() {
                 Ok(json) => serde_json::to_string_pretty(&json).unwrap_or_default(),
@@ -55,6 +61,7 @@ pub fn perform_request(
 
             RequestResult {
                 body: body_str,
+                headers: headers_str,
                 status: format!(
                     "{} {}",
                     status_code.as_u16(),
@@ -67,6 +74,7 @@ pub fn perform_request(
         }
         Err(e) => RequestResult {
             body: format!("Request Failed: {}", e),
+            headers: String::new(),
             status: "Error".to_string(),
             time: "0 ms".to_string(),
             size: "0 bytes".to_string(),
