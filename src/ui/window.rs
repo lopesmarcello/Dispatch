@@ -9,7 +9,7 @@ use sourceview5::Buffer;
 use super::dispatcher::{AppAction, Dispatcher};
 use super::{request_bar, request_tabs, response_view, sidebar, status_bar};
 use crate::ui::key_value_editor::KeyValueEditor;
-use crate::{api, config};
+use crate::{api, config, database};
 
 #[derive(Clone)]
 struct WindowWidgets {
@@ -23,6 +23,7 @@ struct WindowWidgets {
     size_label: gtk::Label,
     spinner: gtk::Spinner,
     headers_editor: KeyValueEditor,
+    sidebar_list: gtk::ListBox,
 }
 
 pub fn build(app: &Application) {
@@ -64,16 +65,32 @@ pub fn build(app: &Application) {
         size_label: status_widget.size_label,
         spinner: status_widget.spinner,
         headers_editor,
+        sidebar_list: sidebar_widgets.list_box.clone(),
     };
 
+    let db = match database::Database::new() {
+        Ok(d) => d,
+        Err(e) => {
+            eprintln!("Failed to init DB: {}", e);
+            return;
+        }
+    };
+
+    if let Ok(history) = db.get_history() {
+        for item in history.iter().rev() {
+            sidebar::add_history_row(&widgets.sidebar_list, &item.method, &item.url, item.id);
+        }
+    }
+
+    let db_ref = std::rc::Rc::new(db);
+
     let w = widgets.clone();
+    let db_clone = db_ref.clone();
 
     let w_sidebar = widgets.clone();
     sidebar_widgets
         .list_box
         .connect_row_activated(move |_, row| {
-            // TODO: takeoff hardccoded values
-
             let index = row.index();
             let (method, url) = match index {
                 0 => ("GET", "https://httpbin.org/get"),
@@ -127,6 +144,12 @@ pub fn build(app: &Application) {
 
         let headers = w.headers_editor.get_data();
 
+        let headers_json = serde_json::to_string(&headers).unwrap_or_default();
+        if let Err(e) = db_clone.save_request(&method_str, &url, &body_text, &headers_json) {
+            eprintln!("Failed to save history: {}", e);
+        }
+        sidebar::add_history_row(&w.sidebar_list, &method_str, &url, 0);
+
         let (sender, receiver) = glib::MainContext::channel(glib::Priority::DEFAULT);
 
         Dispatcher::dispatch(AppAction::SendRequest {
@@ -138,6 +161,56 @@ pub fn build(app: &Application) {
         });
 
         let w_inner = w.clone();
+
+        let w_sidebar = widgets.clone();
+        sidebar_widgets
+            .list_box
+            .connect_row_activated(move |_, row| {
+                // Get children of the row to find the labels
+                if let Some(child) = row.child() {
+                    if let Some(box_widget) = child.downcast_ref::<Box>() {
+                        // We know the structure: Box -> [Label(Method), Label(URL)]
+                        // This is a bit brittle (traversing children), but works for simple apps.
+                        let mut children = box_widget.first_child();
+                        let mut method = String::new();
+                        let mut url = String::new();
+
+                        if let Some(widget) = children {
+                            if let Some(lbl) = widget.downcast_ref::<gtk::Label>() {
+                                method = lbl.text().to_string();
+                            }
+                            children = widget.next_sibling();
+                        }
+                        if let Some(widget) = children {
+                            if let Some(lbl) = widget.downcast_ref::<gtk::Label>() {
+                                url = lbl.text().to_string();
+                            }
+                        }
+
+                        // Update UI
+                        w_sidebar.url_entry.set_text(&url);
+                        let method_idx = match method.as_str() {
+                            "GET" => 0,
+                            "POST" => 1,
+                            "PUT" => 2,
+                            "DELETE" => 3,
+                            "PATCH" => 4,
+                            _ => 0,
+                        };
+                        w_sidebar.method_dropdown.set_selected(method_idx);
+                    }
+                }
+            });
+
+        let db_clear = db_ref.clone();
+        let list_clear = widgets.sidebar_list.clone();
+        sidebar_widgets.clear_btn.connect_clicked(move |_| {
+            let _ = db_clear.clear_history();
+            // Remove all rows
+            while let Some(row) = list_clear.first_child() {
+                list_clear.remove(&row);
+            }
+        });
 
         receiver.attach(None, move |res: api::RequestResult| {
             w_inner.spinner.stop();

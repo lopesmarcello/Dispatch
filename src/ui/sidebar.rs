@@ -4,6 +4,7 @@ use crate::{config, ui::helpers::add_box_margins};
 
 pub struct SidebarWidgets {
     pub list_box: ListBox,
+    pub clear_btn: Button,
 }
 
 pub fn build() -> (Box, SidebarWidgets) {
@@ -30,10 +31,6 @@ pub fn build() -> (Box, SidebarWidgets) {
     let list_box = ListBox::new();
     list_box.add_css_class("navigation-sidebar");
 
-    add_history_row(&list_box, "GET", "https://httpbin.org/get");
-    add_history_row(&list_box, "POST", "https://httpbin.org/post");
-    add_history_row(&list_box, "DELETE", "https://httpbin.org/delete");
-
     let scrolled = ScrolledWindow::builder()
         .hscrollbar_policy(gtk::PolicyType::Never)
         .min_content_height(config::SIDEBAR_HISTORY_MIN_HEIGHT)
@@ -43,10 +40,16 @@ pub fn build() -> (Box, SidebarWidgets) {
 
     container.append(&scrolled);
 
-    (container, SidebarWidgets { list_box })
+    (
+        container,
+        SidebarWidgets {
+            list_box,
+            clear_btn,
+        },
+    )
 }
 
-fn add_history_row(list: &ListBox, method: &str, url: &str) {
+pub fn add_history_row(list: &ListBox, method: &str, url: &str, id: i64) {
     let row = ListBoxRow::new();
     let row_box = Box::new(Orientation::Horizontal, config::SPACING_MEDIUM);
     add_box_margins(&row_box, config::SPACING_MEDIUM);
@@ -63,6 +66,8 @@ fn add_history_row(list: &ListBox, method: &str, url: &str) {
     row_box.append(&url_label);
 
     row.set_child(Some(&row_box));
+
+    row.set_widget_name(&id.to_string());
 
     list.append(&row);
 }

@@ -1,8 +1,9 @@
-use adw::Application;
 use adw::prelude::*;
+use adw::Application;
 
 mod api;
 mod config;
+mod database;
 mod ui;
 
 fn main() {
