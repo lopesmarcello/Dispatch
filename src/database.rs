@@ -8,8 +8,17 @@ pub struct HistoryItem {
     pub id: i64,
     pub method: String,
     pub url: String,
-    pub body: String,
-    pub headers: String,
+
+    pub request_body: String,
+    pub request_headers: String,
+
+    pub response_body: String,
+    pub response_headers: String,
+
+    pub status: String,
+    pub time: String,
+    pub size: String,
+
     pub timestamp: String,
 }
 
@@ -40,38 +49,69 @@ impl Database {
             id INTEGER PRIMARY KEY,
             method TEXT NOT NULL,
             url TEXT NOT NULL,
-            body TEXT,
-            headers TEXT,
+            request_body TEXT,
+            request_headers TEXT,
+            response_body TEXT,
+            response_headers TEXT,
+            status TEXT,
+            size TEXT,
+            time TEXT,
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
-            )
-            ",
+            )",
             [],
         )?;
 
         Ok(Database { conn })
     }
 
-    pub fn save_request(&self, method: &str, url: &str, body: &str, headers: &str) -> Result<()> {
+    pub fn save_exchange(
+        &self,
+        method: &str,
+        url: &str,
+        req_body: &str,
+        req_headers: &str,
+        res_body: &str,
+        res_headers: &str,
+        status: &str,
+        time: &str,
+        size: &str,
+    ) -> Result<i64> {
         self.conn.execute(
-            "INSERT INTO history (method, url, body, headers) VALUES (?1, ?2, ?3, ?4)",
-            params![method, url, body, headers],
+            "INSERT INTO history (
+                method, url, request_body, request_headers, 
+                response_body, response_headers, status, time, size
+            ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+            params![
+                method,
+                url,
+                req_body,
+                req_headers,
+                res_body,
+                res_headers,
+                status,
+                time,
+                size
+            ],
         )?;
-        Ok(())
+        Ok(self.conn.last_insert_rowid())
     }
 
     pub fn get_request_by_id(&self, id: i64) -> Result<HistoryItem> {
-        let mut stmt = self.conn.prepare(
-            "SELECT id, method, url, body, headers, timestamp FROM history WHERE id = ?1",
-        )?;
+        let mut stmt = self.conn.prepare("SELECT id, method, url, request_body, request_headers, response_body, response_headers, status, time, size, timestamp FROM history WHERE id = ?1")?;
 
         let mut rows = stmt.query_map(params![id], |row| {
             Ok(HistoryItem {
                 id: row.get(0)?,
                 method: row.get(1)?,
                 url: row.get(2)?,
-                body: row.get(3).unwrap_or_default(),
-                headers: row.get(4).unwrap_or_default(),
-                timestamp: row.get(5)?,
+                request_body: row.get(3).unwrap_or_default(),
+                request_headers: row.get(4).unwrap_or_default(),
+                response_body: row.get(5).unwrap_or_default(),
+                response_headers: row.get(6).unwrap_or_default(),
+                status: row.get(7).unwrap_or_default(),
+                time: row.get(8).unwrap_or_default(),
+                size: row.get(9).unwrap_or_default(),
+                timestamp: row.get(10)?,
             })
         })?;
 
@@ -90,9 +130,14 @@ impl Database {
                 id: row.get(0)?,
                 method: row.get(1)?,
                 url: row.get(2)?,
-                body: row.get(3).unwrap_or_default(),
-                headers: row.get(4).unwrap_or_default(),
-                timestamp: row.get(5)?,
+                request_body: row.get(3).unwrap_or_default(),
+                request_headers: row.get(4).unwrap_or_default(),
+                response_body: row.get(5).unwrap_or_default(),
+                response_headers: row.get(6).unwrap_or_default(),
+                status: row.get(7).unwrap_or_default(),
+                time: row.get(8).unwrap_or_default(),
+                size: row.get(9).unwrap_or_default(),
+                timestamp: row.get(10)?,
             })
         })?;
 
