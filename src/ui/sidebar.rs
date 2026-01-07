@@ -5,6 +5,7 @@ use crate::{config, ui::helpers::add_box_margins};
 pub struct SidebarWidgets {
     pub list_box: ListBox,
     pub clear_btn: Button,
+    pub new_btn: Button,
 }
 
 pub fn build() -> (Box, SidebarWidgets) {
@@ -18,6 +19,12 @@ pub fn build() -> (Box, SidebarWidgets) {
     title.set_hexpand(true);
     title.set_xalign(0.0);
 
+    let new_btn = Button::builder()
+        .icon_name("list-add-symbolid")
+        .css_classes(vec!["flat".to_string()])
+        .tooltip_text("New Request")
+        .build();
+
     let clear_btn = Button::builder()
         .icon_name("edit-delete-symbolic")
         .css_classes(vec!["flat".to_string()])
@@ -25,6 +32,7 @@ pub fn build() -> (Box, SidebarWidgets) {
         .build();
 
     header_box.append(&title);
+    header_box.append(&new_btn);
     header_box.append(&clear_btn);
     container.append(&header_box);
 
@@ -45,6 +53,7 @@ pub fn build() -> (Box, SidebarWidgets) {
         SidebarWidgets {
             list_box,
             clear_btn,
+            new_btn,
         },
     )
 }

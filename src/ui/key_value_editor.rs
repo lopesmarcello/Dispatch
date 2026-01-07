@@ -114,4 +114,25 @@ impl KeyValueEditor {
         }
         data
     }
+
+    pub fn set_data(&self, data: Vec<(String, String)>) {
+        let mut rows = self.rows.borrow_mut();
+
+        for row in rows.iter() {
+            self.rows_box.remove(&row.container);
+        }
+
+        rows.clear();
+        drop(rows);
+
+        for (k, v) in data {
+            self.add_row(&k, &v);
+        }
+
+        self.add_row("", "");
+    }
+
+    pub fn clear(&self) {
+        self.set_data(Vec::new());
+    }
 }

@@ -59,6 +59,29 @@ impl Database {
         Ok(())
     }
 
+    pub fn get_request_by_id(&self, id: i64) -> Result<HistoryItem> {
+        let mut stmt = self.conn.prepare(
+            "SELECT id, method, url, body, headers, timestamp FROM history WHERE id = ?1",
+        )?;
+
+        let mut rows = stmt.query_map(params![id], |row| {
+            Ok(HistoryItem {
+                id: row.get(0)?,
+                method: row.get(1)?,
+                url: row.get(2)?,
+                body: row.get(3).unwrap_or_default(),
+                headers: row.get(4).unwrap_or_default(),
+                timestamp: row.get(5)?,
+            })
+        })?;
+
+        if let Some(row) = rows.next() {
+            row
+        } else {
+            Err(rusqlite::Error::QueryReturnedNoRows)
+        }
+    }
+
     pub fn get_history(&self) -> Result<Vec<HistoryItem>> {
         let mut stmt = self.conn.prepare("SELECT id, method, url, body, headers, timestamp FROM history ORDER BY id DESC LIMIT 50")?;
 

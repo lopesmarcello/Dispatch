@@ -163,44 +163,54 @@ pub fn build(app: &Application) {
         let w_inner = w.clone();
 
         let w_sidebar = widgets.clone();
+        let db_sidebar = db_ref.clone();
+
         sidebar_widgets
             .list_box
             .connect_row_activated(move |_, row| {
-                // Get children of the row to find the labels
-                if let Some(child) = row.child() {
-                    if let Some(box_widget) = child.downcast_ref::<Box>() {
-                        // We know the structure: Box -> [Label(Method), Label(URL)]
-                        // This is a bit brittle (traversing children), but works for simple apps.
-                        let mut children = box_widget.first_child();
-                        let mut method = String::new();
-                        let mut url = String::new();
+                let id_str = row.widget_name();
+                if let Ok(id) = id_str.parse::<i64>() {
+                    if let Ok(item) = db_sidebar.get_request_by_id(id) {
+                        w_sidebar.url_entry.set_text(&item.url);
 
-                        if let Some(widget) = children {
-                            if let Some(lbl) = widget.downcast_ref::<gtk::Label>() {
-                                method = lbl.text().to_string();
-                            }
-                            children = widget.next_sibling();
-                        }
-                        if let Some(widget) = children {
-                            if let Some(lbl) = widget.downcast_ref::<gtk::Label>() {
-                                url = lbl.text().to_string();
-                            }
-                        }
-
-                        // Update UI
-                        w_sidebar.url_entry.set_text(&url);
-                        let method_idx = match method.as_str() {
+                        let method_idx = match item.method.as_str() {
                             "GET" => 0,
                             "POST" => 1,
-                            "PUT" => 2,
-                            "DELETE" => 3,
-                            "PATCH" => 4,
+                            "PATCH" => 2,
+                            "PUT" => 3,
+                            "DELETE" => 4,
                             _ => 0,
                         };
+
                         w_sidebar.method_dropdown.set_selected(method_idx);
+                        w_sidebar.request_body_buffer.set_text(&item.body);
+
+                        if let Ok(headers_vec) =
+                            serde_json::from_str::<Vec<(String, String)>>(&item.headers)
+                        {
+                            w_sidebar.headers_editor.set_data(headers_vec);
+                        } else {
+                            w_sidebar.headers_editor.clear();
+                        }
                     }
                 }
             });
+
+        let w_new = widgets.clone();
+        sidebar_widgets.new_btn.connect_clicked(move |_| {
+            w_new.url_entry.set_text("");
+            w_new.method_dropdown.set_selected(0);
+            w_new.request_body_buffer.set_text("");
+            w_new.headers_editor.clear();
+
+            w_new.response_buffer.set_text("");
+            w_new.response_headers_buffer.set_text("");
+            w_new.status_label.set_text("-");
+            w_new.size_label.set_text("- KB");
+            w_new.time_label.set_text("- ms");
+            w_new.status_label.remove_css_class("success");
+            w_new.status_label.remove_css_class("error");
+        });
 
         let db_clear = db_ref.clone();
         let list_clear = widgets.sidebar_list.clone();
