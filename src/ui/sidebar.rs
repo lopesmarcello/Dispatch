@@ -20,7 +20,7 @@ pub fn build() -> (Box, SidebarWidgets) {
     title.set_xalign(0.0);
 
     let new_btn = Button::builder()
-        .icon_name("list-add-symbolid")
+        .icon_name("document-new-symbolic")
         .css_classes(vec!["flat".to_string()])
         .tooltip_text("New Request")
         .build();

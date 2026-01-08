@@ -11,6 +11,7 @@ use std::thread;
 use super::{request_bar, request_tabs, response_view, sidebar, status_bar};
 use crate::models::Method;
 use crate::state::Action;
+use crate::ui::helpers::set_syntax_highlightin;
 use crate::ui::key_value_editor::KeyValueEditor;
 use crate::{api, config, database};
 
@@ -29,6 +30,7 @@ struct WindowWidgets {
     sidebar_list: gtk::ListBox,
 }
 
+#[allow(deprecated)]
 pub fn build(app: &Application) {
     // --- Layout Setup ---
     let (sidebar_content, sidebar_widgets) = sidebar::build();
@@ -139,6 +141,8 @@ pub fn build(app: &Application) {
                     w.status_label.set_text(&item.status);
                     w.time_label.set_text(&item.time);
                     w.size_label.set_text(&item.size);
+
+                    set_syntax_highlightin(&w.response_buffer, &item.response_headers);
 
                     if item.status.starts_with("2") {
                         w.status_label.add_css_class(config::CLASS_SUCCESS);

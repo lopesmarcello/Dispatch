@@ -15,6 +15,7 @@ pub struct HistoryItem {
     pub status: String,
     pub time: String,
     pub size: String,
+    pub timestamp: String,
 }
 
 pub struct Database {
