@@ -2,12 +2,15 @@ use adw::{
     Application, ApplicationWindow, Breakpoint, BreakpointCondition, HeaderBar, OverlaySplitView,
     prelude::*,
 };
-use glib::{self};
+use glib;
 use gtk::{Box, Orientation};
 use sourceview5::Buffer;
+use std::rc::Rc;
+use std::thread;
 
-use super::dispatcher::{AppAction, Dispatcher};
 use super::{request_bar, request_tabs, response_view, sidebar, status_bar};
+use crate::models::Method;
+use crate::state::Action;
 use crate::ui::key_value_editor::KeyValueEditor;
 use crate::{api, config, database};
 
@@ -55,7 +58,6 @@ pub fn build(app: &Application) {
 
     main_content.append(&paned);
 
-    // --- State Initialization ---
     let widgets = WindowWidgets {
         url_entry,
         method_dropdown,
@@ -71,205 +73,204 @@ pub fn build(app: &Application) {
     };
 
     // --- Database Setup ---
-    let db = match database::Database::new() {
-        Ok(d) => d,
-        Err(e) => {
-            eprintln!("Failed to init DB: {}", e);
-            return;
-        }
-    };
+    let db = Rc::new(database::Database::new().expect("Failed to init DB"));
 
     // Load initial history
-    if let Ok(history) = db.get_history() {
-        for item in history.iter().rev() {
-            sidebar::add_history_row(&widgets.sidebar_list, &item.method, &item.url, item.id);
+    match db.get_history() {
+        Ok(history) => {
+            for item in history.iter().rev() {
+                sidebar::add_history_row(&widgets.sidebar_list, &item.method, &item.url, item.id);
+            }
         }
+        Err(e) => eprintln!("CRITICAL DB ERROR: {}", e),
     }
 
-    let db_ref = std::rc::Rc::new(db);
-
     // --- Signal Handlers (All at top level!) ---
+    let (sender, receiver) = glib::MainContext::channel(glib::Priority::DEFAULT);
 
     // Sidebar Click (Load Request)
-    let w_sidebar = widgets.clone();
-    let db_sidebar = db_ref.clone();
+    let w = widgets.clone();
+    let db_clone = db.clone();
+    let sender_clone = sender.clone();
 
+    // Reducer
+    receiver.attach(None, move |action| {
+        match action {
+            Action::UpdateUrl(url) => w.url_entry.set_text(&url),
+            Action::UpdateMethod(method) => w.method_dropdown.set_selected(method.to_index()),
+            Action::UpdateBody(body) => w.request_body_buffer.set_text(&body),
+            Action::UpdateHeaders(headers) => w.headers_editor.set_data(headers),
+
+            Action::NewRequest => {
+                w.url_entry.set_text("");
+                w.method_dropdown.set_selected(0);
+                w.request_body_buffer.set_text("");
+                w.headers_editor.clear();
+                w.response_buffer.set_text("");
+                w.response_headers_buffer.set_text("");
+                w.status_label.set_text("-");
+                w.status_label.remove_css_class(config::CLASS_SUCCESS);
+                w.status_label.remove_css_class(config::CLASS_ERROR);
+            }
+
+            Action::ClearHistory => {
+                let _ = db_clone.clear_history();
+                while let Some(row) = w.sidebar_list.first_child() {
+                    w.sidebar_list.remove(&row);
+                }
+            }
+
+            Action::LoadHistoryItem(id) => {
+                if let Ok(item) = db_clone.get_request_by_id(id) {
+                    sender_clone.send(Action::UpdateUrl(item.url)).unwrap();
+                    if let Ok(m) = item.method.parse::<Method>() {
+                        sender_clone.send(Action::UpdateMethod(m)).unwrap();
+                    }
+                    sender_clone
+                        .send(Action::UpdateBody(item.request_body))
+                        .unwrap();
+
+                    if let Ok(h) = serde_json::from_str(&item.request_headers) {
+                        sender_clone.send(Action::UpdateHeaders(h)).unwrap();
+                    }
+
+                    w.response_buffer.set_text(&item.response_body);
+                    w.response_headers_buffer.set_text(&item.response_headers);
+                    w.status_label.set_text(&item.status);
+                    w.time_label.set_text(&item.time);
+                    w.size_label.set_text(&item.size);
+
+                    if item.status.starts_with("2") {
+                        w.status_label.add_css_class(config::CLASS_SUCCESS);
+                        w.status_label.remove_css_class(config::CLASS_ERROR);
+                    } else {
+                        w.status_label.add_css_class(config::CLASS_ERROR);
+                        w.status_label.remove_css_class(config::CLASS_SUCCESS);
+                    }
+                }
+            }
+
+            Action::SendRequest => {
+                let url = w.url_entry.text().to_string();
+                if url.is_empty() {
+                    return glib::ControlFlow::Continue;
+                }
+
+                let method = Method::from_index(w.method_dropdown.selected());
+                let (start, end) = w.request_body_buffer.bounds();
+                let body = w.request_body_buffer.text(&start, &end, true).to_string();
+                let headers = w.headers_editor.get_data();
+
+                sender_clone.send(Action::RequestStarted).unwrap();
+
+                let tx = sender_clone.clone();
+                let method_clone = method.clone();
+                let url_clone = url.clone();
+                let body_clone = body.clone();
+                let headers_clone = headers.clone();
+
+                thread::spawn(move || {
+                    let result =
+                        api::perform_request(method_clone, &url_clone, &body_clone, headers_clone);
+                    tx.send(Action::RequestCompleted(result)).unwrap();
+                });
+            }
+
+            Action::RequestStarted => {
+                w.spinner.set_visible(true);
+                w.spinner.start();
+                w.status_label.set_text("Sending...");
+                w.status_label.remove_css_class(config::CLASS_ERROR);
+                w.status_label.remove_css_class(config::CLASS_SUCCESS);
+            }
+
+            Action::RequestCompleted(result) => {
+                w.spinner.stop();
+                w.spinner.set_visible(false);
+
+                match result {
+                    Ok(res) => {
+                        w.response_buffer.set_text(&res.body);
+                        w.response_headers_buffer.set_text(&res.headers);
+                        w.status_label.set_text(&res.status);
+                        w.time_label.set_text(&res.time);
+                        w.size_label.set_text(&res.size);
+
+                        if res.status_code >= 200 && res.status_code < 300 {
+                            w.status_label.add_css_class(config::CLASS_SUCCESS);
+                            w.status_label.remove_css_class(config::CLASS_ERROR);
+                        } else {
+                            w.status_label.add_css_class(config::CLASS_ERROR);
+                            w.status_label.remove_css_class(config::CLASS_SUCCESS);
+                        }
+
+                        let url = w.url_entry.text().to_string();
+                        let method = Method::from_index(w.method_dropdown.selected());
+                        let (start, end) = w.request_body_buffer.bounds();
+                        let body = w.request_body_buffer.text(&start, &end, true).to_string();
+                        let headers = w.headers_editor.get_data();
+                        let headers_json = serde_json::to_string(&headers).unwrap_or_default();
+
+                        if let Ok(id) = db_clone.save_exchange(
+                            method.as_str(),
+                            &url,
+                            &body,
+                            &headers_json,
+                            &res.body,
+                            &res.headers,
+                            &res.status,
+                            &res.time,
+                            &res.size,
+                        ) {
+                            sender_clone.send(Action::HistorySaved(id)).unwrap();
+                        }
+                    }
+                    Err(api::ApiError::RequestFailed(msg)) => {
+                        w.status_label.set_text("Error");
+                        w.status_label.add_css_class(config::CLASS_ERROR);
+                        w.response_buffer.set_text(&msg);
+                    }
+                }
+            }
+
+            Action::HistorySaved(id) => {
+                // Add to sidebar
+                let url = w.url_entry.text().to_string();
+                let method = Method::from_index(w.method_dropdown.selected());
+                sidebar::add_history_row(&w.sidebar_list, method.as_str(), &url, id);
+            }
+        }
+        glib::ControlFlow::Continue
+    });
+
+    // --- Connect Signals --
+
+    let s = sender.clone();
+    send_button.connect_clicked(move |_| {
+        s.send(Action::SendRequest).unwrap();
+    });
+
+    let s = sender.clone();
+    sidebar_widgets.new_btn.connect_clicked(move |_| {
+        s.send(Action::NewRequest).unwrap();
+    });
+
+    let s = sender.clone();
+    sidebar_widgets.clear_btn.connect_clicked(move |_| {
+        s.send(Action::ClearHistory).unwrap();
+    });
+
+    let s = sender.clone();
     sidebar_widgets
         .list_box
         .connect_row_activated(move |_, row| {
             let id_str = row.widget_name();
             if let Ok(id) = id_str.parse::<i64>() {
-                if let Ok(item) = db_sidebar.get_request_by_id(id) {
-                    // Update URL & Method
-                    w_sidebar.url_entry.set_text(&item.url);
-                    let method_idx = match item.method.as_str() {
-                        "GET" => 0,
-                        "POST" => 1,
-                        "PATCH" => 2,
-                        "PUT" => 3,
-                        "DELETE" => 4,
-                        _ => 0,
-                    };
-                    w_sidebar.method_dropdown.set_selected(method_idx);
-
-                    w_sidebar.request_body_buffer.set_text(&item.request_body);
-
-                    if let Ok(headers_vec) =
-                        serde_json::from_str::<Vec<(String, String)>>(&item.request_headers)
-                    {
-                        w_sidebar.headers_editor.set_data(headers_vec);
-                    } else {
-                        w_sidebar.headers_editor.clear();
-                    }
-
-                    w_sidebar.response_buffer.set_text(&item.response_body);
-                    w_sidebar
-                        .response_headers_buffer
-                        .set_text(&item.response_headers);
-                    w_sidebar.status_label.set_text(&item.status);
-                    w_sidebar.time_label.set_text(&item.time);
-                    w_sidebar.size_label.set_text(&item.size);
-
-                    if item.status.starts_with("2") {
-                        w_sidebar.status_label.add_css_class(config::CLASS_SUCCESS);
-                        w_sidebar.status_label.remove_css_class(config::CLASS_ERROR);
-                    } else {
-                        w_sidebar.status_label.add_css_class(config::CLASS_ERROR);
-                        w_sidebar
-                            .status_label
-                            .remove_css_class(config::CLASS_SUCCESS);
-                    }
-                }
+                s.send(Action::LoadHistoryItem(id)).unwrap();
             }
         });
 
-    // New Request Button
-    let w_new = widgets.clone();
-    sidebar_widgets.new_btn.connect_clicked(move |_| {
-        w_new.url_entry.set_text("");
-        w_new.method_dropdown.set_selected(0);
-        w_new.request_body_buffer.set_text("");
-        w_new.headers_editor.clear();
-
-        w_new.response_buffer.set_text("");
-        w_new.response_headers_buffer.set_text("");
-        w_new.status_label.set_text("-");
-        w_new.size_label.set_text("- KB");
-        w_new.time_label.set_text("- ms");
-        w_new.status_label.remove_css_class("success");
-        w_new.status_label.remove_css_class("error");
-    });
-
-    // Clear History Button
-    let db_clear = db_ref.clone();
-    let list_clear = widgets.sidebar_list.clone();
-    sidebar_widgets.clear_btn.connect_clicked(move |_| {
-        let _ = db_clear.clear_history();
-        while let Some(row) = list_clear.first_child() {
-            list_clear.remove(&row);
-        }
-    });
-
-    // Send Button
-    let w = widgets.clone();
-    let db_clone = db_ref.clone();
-
-    send_button.connect_clicked(move |_| {
-        let url = w.url_entry.text().to_string();
-        if url.is_empty() {
-            return;
-        }
-
-        // UI Updates
-        w.spinner.set_visible(true);
-        w.spinner.start();
-        w.status_label.set_text("Sending...");
-        w.status_label.remove_css_class(config::CLASS_ERROR);
-        w.status_label.remove_css_class(config::CLASS_SUCCESS);
-
-        // Gather Data
-        let selected_method = w.method_dropdown.selected();
-        let method_str = match selected_method {
-            0 => "GET",
-            1 => "POST",
-            2 => "PUT",
-            3 => "PATCH",
-            4 => "DELETE",
-            _ => "GET",
-        }
-        .to_string();
-
-        let (buffer_start, buffer_end) = w.request_body_buffer.bounds();
-        let body_text = w
-            .request_body_buffer
-            .text(&buffer_start, &buffer_end, true)
-            .to_string();
-        let headers = w.headers_editor.get_data();
-
-        // Save to DB
-        let headers_json = serde_json::to_string(&headers).unwrap_or_default();
-
-        // Dispatch Network Request
-        let (sender, receiver) = glib::MainContext::channel(glib::Priority::DEFAULT);
-        Dispatcher::dispatch(AppAction::SendRequest {
-            method: method_str.clone(),
-            url: url.clone(),
-            body: body_text.clone(),
-            sender,
-            headers,
-        });
-
-        // Handle Response
-        let w_inner = w.clone();
-        let db_inner = db_clone.clone();
-        let method_inner = method_str.clone();
-        let url_inner = url.clone();
-        let req_body_inner = body_text.clone();
-        let req_headers_inner = headers_json.clone();
-
-        receiver.attach(None, move |res: api::RequestResult| {
-            w_inner.spinner.stop();
-            w_inner.spinner.set_visible(false);
-
-            w_inner.response_buffer.set_text(&res.body);
-            w_inner.response_headers_buffer.set_text(&res.headers);
-            w_inner.status_label.set_text(&res.status);
-            w_inner.time_label.set_text(&res.time);
-            w_inner.size_label.set_text(&res.size);
-
-            if res.is_error {
-                w_inner.status_label.add_css_class(config::CLASS_ERROR);
-                w_inner.status_label.remove_css_class(config::CLASS_SUCCESS);
-            } else {
-                w_inner.status_label.add_css_class(config::CLASS_SUCCESS);
-                w_inner.status_label.remove_css_class(config::CLASS_ERROR);
-            }
-
-            let new_id = match db_inner.save_exchange(
-                &method_inner,
-                &url_inner,
-                &req_body_inner,
-                &req_headers_inner,
-                &res.body,
-                &res.headers,
-                &res.status,
-                &res.time,
-                &res.size,
-            ) {
-                Ok(id) => id,
-                Err(e) => {
-                    eprintln!("Failed to save history {}", e);
-                    0
-                }
-            };
-
-            sidebar::add_history_row(&w_inner.sidebar_list, &method_inner, &url_inner, new_id);
-
-            glib::ControlFlow::Break
-        });
-    });
-
-    // --- Window Finalization ---
+    // ---  Window Finalization ---
     let split_view = OverlaySplitView::builder()
         .sidebar(&sidebar_content)
         .content(&main_content)

@@ -1,9 +1,11 @@
-use adw::prelude::*;
 use adw::Application;
+use adw::prelude::*;
 
 mod api;
 mod config;
 mod database;
+mod models;
+mod state;
 mod ui;
 
 fn main() {

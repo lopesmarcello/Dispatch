@@ -186,6 +186,7 @@ dependencies = [
  "libadwaita",
  "reqwest",
  "rusqlite",
+ "serde",
  "serde_json",
  "sourceview5",
 ]

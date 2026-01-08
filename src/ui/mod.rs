@@ -1,4 +1,3 @@
-pub mod dispatcher;
 pub mod helpers;
 pub mod key_value_editor;
 pub mod request_bar;

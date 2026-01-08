@@ -1,3 +1,4 @@
+use crate::models::Method;
 use reqwest::{
     blocking::Client,
     header::{HeaderMap, HeaderName, HeaderValue},
@@ -5,21 +6,27 @@ use reqwest::{
 use serde_json::Value;
 use std::{str::FromStr, time::Instant};
 
-pub struct RequestResult {
+#[derive(Debug, Clone)]
+pub struct ApiResponse {
     pub body: String,
+    pub headers: String,
     pub status: String,
+    pub status_code: u16,
     pub time: String,
     pub size: String,
-    pub is_error: bool,
-    pub headers: String,
+}
+
+#[derive(Debug, Clone)]
+pub enum ApiError {
+    RequestFailed(String),
 }
 
 pub fn perform_request(
-    method: &str,
+    method: Method,
     url: &str,
     body: &str,
     headers_vec: Vec<(String, String)>,
-) -> RequestResult {
+) -> Result<ApiResponse, ApiError> {
     let client = Client::new();
 
     let mut headers = HeaderMap::new();
@@ -32,11 +39,11 @@ pub fn perform_request(
     }
 
     let request_builder = match method {
-        "POST" => client.post(url).body(body.to_string()),
-        "PUT" => client.put(url).body(body.to_string()),
-        "PATCH" => client.patch(url).body(body.to_string()),
-        "DELETE" => client.delete(url),
-        _ => client.get(url).headers(headers),
+        Method::POST => client.post(url).headers(headers).body(body.to_string()),
+        Method::PUT => client.put(url).headers(headers).body(body.to_string()),
+        Method::PATCH => client.patch(url).headers(headers).body(body.to_string()),
+        Method::DELETE => client.delete(url).headers(headers),
+        Method::GET => client.get(url).headers(headers),
     };
 
     let start_time = Instant::now();
@@ -59,7 +66,7 @@ pub fn perform_request(
                 Err(_) => "Error: Could not parse JSON".to_string(),
             };
 
-            RequestResult {
+            Ok(ApiResponse {
                 body: body_str,
                 headers: headers_str,
                 status: format!(
@@ -67,18 +74,11 @@ pub fn perform_request(
                     status_code.as_u16(),
                     status_code.canonical_reason().unwrap_or("")
                 ),
+                status_code: status_code.as_u16(),
                 time: format!("{:.2?}", duration),
                 size: format!("{} bytes", size),
-                is_error: status_code.is_client_error() || status_code.is_server_error(),
-            }
+            })
         }
-        Err(e) => RequestResult {
-            body: format!("Request Failed: {}", e),
-            headers: String::new(),
-            status: "Error".to_string(),
-            time: "0 ms".to_string(),
-            size: "0 bytes".to_string(),
-            is_error: true,
-        },
+        Err(e) => Err(ApiError::RequestFailed(e.to_string())),
     }
 }
