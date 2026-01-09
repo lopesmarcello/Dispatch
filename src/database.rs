@@ -18,6 +18,23 @@ pub struct HistoryItem {
     pub timestamp: String,
 }
 
+#[derive(Debug)]
+pub struct Collection {
+    pub id: i64,
+    pub name: String
+}
+
+#[derive(Debug)]
+pub struct CollectionItem {
+    pub id: i64,
+    pub collection_id: i64,
+    pub name: String,
+    pub method: String,
+    pub url: String,
+    pub body: String,
+    pub headers: String,
+}
+
 pub struct Database {
     conn: Connection,
 }
@@ -36,7 +53,6 @@ impl Database {
 
         let conn = Connection::open(db_path)?;
 
-        // Create table with NEW schema
         conn.execute(
             "CREATE TABLE IF NOT EXISTS history (
                 id INTEGER PRIMARY KEY,
@@ -50,6 +66,28 @@ impl Database {
                 time TEXT,
                 size TEXT,
                 timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            )",
+            [],
+        )?;
+
+       conn.execute(
+            "CREATE TABLE IF NOT EXISTS collection_items (
+                id INTEGER PRIMARY KEY,
+                collection_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                method TEXT NOT NULL,
+                url TEXT NOT NULL,
+                body TEXT,
+                headers TEXT,
+                FOREIGN KEY(collection_id) REFERENCES collections(id) ON DELETE CASCADE
+            )",
+            [],
+        )?;
+
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS collections (
+                id INTEGER PRIMARY KEY,
+                name TEXT NOT NULL UNIQUE
             )",
             [],
         )?;
@@ -90,7 +128,6 @@ impl Database {
     }
 
     pub fn get_history(&self) -> Result<Vec<HistoryItem>> {
-        // UPDATED QUERY: Uses 'request_body' instead of 'body'
         let mut stmt = self.conn.prepare("SELECT id, method, url, request_body, request_headers, response_body, response_headers, status, time, size, timestamp FROM history ORDER BY id DESC LIMIT 50")?;
 
         let rows = stmt.query_map([], |row| {
@@ -117,7 +154,6 @@ impl Database {
     }
 
     pub fn get_request_by_id(&self, id: i64) -> Result<HistoryItem> {
-        // UPDATED QUERY: Uses 'request_body' instead of 'body'
         let mut stmt = self.conn.prepare("SELECT id, method, url, request_body, request_headers, response_body, response_headers, status, time, size, timestamp FROM history WHERE id = ?1")?;
 
         let mut rows = stmt.query_map(params![id], |row| {
@@ -146,5 +182,46 @@ impl Database {
     pub fn clear_history(&self) -> Result<()> {
         self.conn.execute("DELETE FROM history", [])?;
         Ok(())
+    }
+
+    pub fn create_collection(&self, name: &str) -> Result<i64> {
+        self.conn.execute("INSERT INTO collections (name) VALUES (?1)", params![name])?;
+        Ok(self.conn.last_insert_rowid())
+    }
+
+    pub fn get_collections(&self) -> Result<Vec<Collection>> {
+        let mut stmt = self.conn.prepare("SELECT id, name FROM collections ORDER BY name ASC")?;
+        let rows = stmt.query_map([], |row| {
+            Ok(Collection { id: row.get(0)?, name: row.get(1)? })
+        })?;
+        let mut items = Vec::new();
+        for row in rows { items.push(row?); }
+        Ok(items)
+    }
+
+    pub fn save_to_collection(&self, col_id: i64, name: &str, method: &str, url: &str, body: &str, headers: &str) -> Result<i64> {
+        self.conn.execute(
+            "INSERT INTO collection_items (collection_id, name, method, url, body, headers) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            params![col_id, name, method, url, body, headers],
+        )?;
+        Ok(self.conn.last_insert_rowid())
+    }
+
+    pub fn get_collection_items(&self, col_id: i64) -> Result<Vec<CollectionItem>> {
+        let mut stmt = self.conn.prepare("SELECT id, collection_id, name, method, url, body, headers FROM collection_items WHERE collection_id = ?1")?;
+        let rows = stmt.query_map(params![col_id], |row| {
+            Ok(CollectionItem {
+                id: row.get(0)?,
+                collection_id: row.get(1)?,
+                name: row.get(2)?,
+                method: row.get(3)?,
+                url: row.get(4)?,
+                body: row.get(5).unwrap_or_default(),
+                headers: row.get(6).unwrap_or_default(),
+            })
+        })?;
+        let mut items = Vec::new();
+        for row in rows { items.push(row?); }
+        Ok(items)
     }
 }

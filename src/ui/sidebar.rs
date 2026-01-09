@@ -3,57 +3,66 @@ use gtk::{Box, Button, Label, ListBox, ListBoxRow, Orientation, ScrolledWindow, 
 use crate::{config, ui::helpers::add_box_margins};
 
 pub struct SidebarWidgets {
-    pub list_box: ListBox,
-    pub clear_btn: Button,
-    pub new_btn: Button,
+    pub history_list: ListBox,
+    pub collections_list: ListBox,
+    pub clear_history_btn: Button,
+    pub new_request_btn: Button,
+    pub new_collection_btn: Button,
 }
 
 pub fn build() -> (Box, SidebarWidgets) {
     let container = Box::new(Orientation::Vertical, config::SPACING_NONE);
 
-    let header_box = Box::new(Orientation::Horizontal, config::SPACING_NONE);
-    add_box_margins(&header_box, config::SPACING_MEDIUM);
+    let stack = ViewStack::new();
+    stack.set_vexpand(true);
 
-    let title = Label::new(Some("History"));
-    title.add_css_class("heading");
-    title.set_hexpand(true);
-    title.set_xalign(0.0);
+    let history_box = Box::new(Orientation::Vertical, 0);
+    let history_toolbar = Box::new(Orientation::Horizontal, config::SPACING_SMALL);
+    add_box_margins(&history_toolbar, config::SPACING_MEDIUM);
 
-    let new_btn = Button::builder()
+    let hist_label = Label::new(Some("Recent"));
+    hist_label.add_css_class("heading");
+    hist_label.set_hexpand(true);
+    hist_label.set_xalign(0.0);
+
+    let new_request_btn = Button::builder()
         .icon_name("document-new-symbolic")
         .css_classes(vec!["flat".to_string()])
         .tooltip_text("New Request")
         .build();
 
-    let clear_btn = Button::builder()
+    let clear_history_btn = Button::builder()
         .icon_name("edit-delete-symbolic")
         .css_classes(vec!["flat".to_string()])
         .tooltip_text("Clear History")
         .build();
 
-    header_box.append(&title);
-    header_box.append(&new_btn);
-    header_box.append(&clear_btn);
+    header_box.append(&hist_label);
+    header_box.append(&new_request_btn);
+    header_box.append(&clear_history_btn);
     container.append(&header_box);
 
-    let list_box = ListBox::new();
-    list_box.add_css_class("navigation-sidebar");
+    let history_list= ListBox::new();
+    history_list.add_css_class("navigation-sidebar");
 
-    let scrolled = ScrolledWindow::builder()
+    let history_scrolled = ScrolledWindow::builder()
         .hscrollbar_policy(gtk::PolicyType::Never)
-        .min_content_height(config::SIDEBAR_HISTORY_MIN_HEIGHT)
         .child(&list_box)
         .vexpand(true)
         .build();
 
-    container.append(&scrolled);
+    history_box.append(&history_toolbar);
+    history_box.append(&history_scrolled);
+
+    stack.add_titled(&history_box, Some("history"), "History");
+// TODO: continue impl in laptop
 
     (
         container,
         SidebarWidgets {
             list_box,
-            clear_btn,
-            new_btn,
+            clear_history_btn,
+            new_request_btn,
         },
     )
 }
