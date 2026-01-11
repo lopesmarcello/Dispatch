@@ -11,8 +11,9 @@ use std::thread;
 use super::{request_bar, request_tabs, response_view, sidebar, status_bar};
 use crate::models::Method;
 use crate::state::Action;
-use crate::ui::helpers::set_syntax_highlightin;
+use crate::ui::helpers::{set_syntax_highlightin, show_input_dialog};
 use crate::ui::key_value_editor::KeyValueEditor;
+use crate::ui::window;
 use crate::{api, config, database};
 
 #[derive(Clone)]
@@ -27,7 +28,8 @@ struct WindowWidgets {
     size_label: gtk::Label,
     spinner: gtk::Spinner,
     headers_editor: KeyValueEditor,
-    sidebar_list: gtk::ListBox,
+    history_list: gtk::ListBox,
+    collections_list: gtk::ListBox,
 }
 
 #[allow(deprecated)]
@@ -71,20 +73,28 @@ pub fn build(app: &Application) {
         size_label: status_widget.size_label,
         spinner: status_widget.spinner,
         headers_editor,
-        sidebar_list: sidebar_widgets.list_box.clone(),
+        history_list: sidebar_widgets.history_list.clone(),
+        collections_list: sidebar_widgets.collections_list.clone(),
     };
 
     // --- Database Setup ---
     let db = Rc::new(database::Database::new().expect("Failed to init DB"));
 
-    // Load initial history
+    // Load history
     match db.get_history() {
         Ok(history) => {
             for item in history.iter().rev() {
-                sidebar::add_history_row(&widgets.sidebar_list, &item.method, &item.url, item.id);
+                sidebar::add_history_row(&widgets.history_list, &item.method, &item.url, item.id);
             }
         }
         Err(e) => eprintln!("CRITICAL DB ERROR: {}", e),
+    }
+
+    // Load Collections
+    if let Ok(cols) = db.get_collections() {
+        for col in cols {
+            sidebar::add_collection_row(&widgets.collections_list, &col.name, col.id);
+        }
     }
 
     // --- Signal Handlers (All at top level!) ---
@@ -94,6 +104,31 @@ pub fn build(app: &Application) {
     let w = widgets.clone();
     let db_clone = db.clone();
     let sender_clone = sender.clone();
+
+    // ---  Window Creation---
+    let split_view = OverlaySplitView::builder()
+        .sidebar(&sidebar_content)
+        .content(&main_content)
+        .sidebar_width_fraction(config::SIDEBAR_WIDTH_FRACTION)
+        .min_sidebar_width(config::MIN_SIDEBAR_WIDTH)
+        .build();
+
+    let breakpoint = Breakpoint::new(BreakpointCondition::new_length(
+        adw::BreakpointConditionLengthType::MaxWidth,
+        config::BREAKPOINT_WIDTH,
+        adw::LengthUnit::Px,
+    ));
+    breakpoint.add_setter(&split_view, "collapsed", Some(&true.to_value()));
+
+    let window = ApplicationWindow::builder()
+        .application(app)
+        .title("Dispatch")
+        .default_width(config::WINDOW_DEFAULT_WIDTH)
+        .default_height(config::WINDOW_DEFAULT_HEIGHT)
+        .content(&split_view)
+        .build();
+
+    window.add_breakpoint(breakpoint);
 
     // Reducer
     receiver.attach(None, move |action| {
@@ -117,8 +152,8 @@ pub fn build(app: &Application) {
 
             Action::ClearHistory => {
                 let _ = db_clone.clear_history();
-                while let Some(row) = w.sidebar_list.first_child() {
-                    w.sidebar_list.remove(&row);
+                while let Some(row) = w.history_list.first_child() {
+                    w.history_list.remove(&row);
                 }
             }
 
@@ -241,8 +276,15 @@ pub fn build(app: &Application) {
                 // Add to sidebar
                 let url = w.url_entry.text().to_string();
                 let method = Method::from_index(w.method_dropdown.selected());
-                sidebar::add_history_row(&w.sidebar_list, method.as_str(), &url, id);
+                sidebar::add_history_row(&w.history_list, method.as_str(), &url, id);
             }
+
+            Action::CreateCollection(name) => {
+                if let Ok(id) = db_clone.create_collection(&name) {
+                    sidebar::add_collection_row(&w.collections_list, &name, id);
+                }
+            }
+            _ => {}
         }
         glib::ControlFlow::Continue
     });
@@ -255,18 +297,18 @@ pub fn build(app: &Application) {
     });
 
     let s = sender.clone();
-    sidebar_widgets.new_btn.connect_clicked(move |_| {
+    sidebar_widgets.new_request_btn.connect_clicked(move |_| {
         s.send(Action::NewRequest).unwrap();
     });
 
     let s = sender.clone();
-    sidebar_widgets.clear_btn.connect_clicked(move |_| {
+    sidebar_widgets.clear_history_btn.connect_clicked(move |_| {
         s.send(Action::ClearHistory).unwrap();
     });
 
     let s = sender.clone();
     sidebar_widgets
-        .list_box
+        .history_list
         .connect_row_activated(move |_, row| {
             let id_str = row.widget_name();
             if let Ok(id) = id_str.parse::<i64>() {
@@ -274,29 +316,16 @@ pub fn build(app: &Application) {
             }
         });
 
-    // ---  Window Finalization ---
-    let split_view = OverlaySplitView::builder()
-        .sidebar(&sidebar_content)
-        .content(&main_content)
-        .sidebar_width_fraction(config::SIDEBAR_WIDTH_FRACTION)
-        .min_sidebar_width(config::MIN_SIDEBAR_WIDTH)
-        .build();
+    let s = sender.clone();
+    let window_clone = window.clone();
+    sidebar_widgets
+        .new_collection_btn
+        .connect_clicked(move |_| {
+            let s_inner = s.clone();
+            show_input_dialog(&window_clone, "New Collection", move |name| {
+                s_inner.send(Action::CreateCollection(name)).unwrap()
+            });
+        });
 
-    let breakpoint = Breakpoint::new(BreakpointCondition::new_length(
-        adw::BreakpointConditionLengthType::MaxWidth,
-        config::BREAKPOINT_WIDTH,
-        adw::LengthUnit::Px,
-    ));
-    breakpoint.add_setter(&split_view, "collapsed", Some(&true.to_value()));
-
-    let window = ApplicationWindow::builder()
-        .application(app)
-        .title("Dispatch")
-        .default_width(config::WINDOW_DEFAULT_WIDTH)
-        .default_height(config::WINDOW_DEFAULT_HEIGHT)
-        .content(&split_view)
-        .build();
-
-    window.add_breakpoint(breakpoint);
     window.present();
 }

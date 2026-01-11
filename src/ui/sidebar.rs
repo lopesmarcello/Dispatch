@@ -1,3 +1,4 @@
+use adw::{ViewStack, ViewSwitcher};
 use gtk::{Box, Button, Label, ListBox, ListBoxRow, Orientation, ScrolledWindow, prelude::*};
 
 use crate::{config, ui::helpers::add_box_margins};
@@ -37,17 +38,17 @@ pub fn build() -> (Box, SidebarWidgets) {
         .tooltip_text("Clear History")
         .build();
 
-    header_box.append(&hist_label);
-    header_box.append(&new_request_btn);
-    header_box.append(&clear_history_btn);
-    container.append(&header_box);
+    history_toolbar.append(&hist_label);
+    history_toolbar.append(&new_request_btn);
+    history_toolbar.append(&clear_history_btn);
+    container.append(&history_toolbar);
 
-    let history_list= ListBox::new();
+    let history_list = ListBox::new();
     history_list.add_css_class("navigation-sidebar");
 
     let history_scrolled = ScrolledWindow::builder()
         .hscrollbar_policy(gtk::PolicyType::Never)
-        .child(&list_box)
+        .child(&history_list)
         .vexpand(true)
         .build();
 
@@ -55,14 +56,54 @@ pub fn build() -> (Box, SidebarWidgets) {
     history_box.append(&history_scrolled);
 
     stack.add_titled(&history_box, Some("history"), "History");
-// TODO: continue impl in laptop
+
+    // Collections
+    let collections_box = Box::new(Orientation::Vertical, 0);
+
+    let col_toolbar = Box::new(Orientation::Horizontal, config::SPACING_SMALL);
+    add_box_margins(&col_toolbar, config::SPACING_MEDIUM);
+
+    let col_label = Label::new(Some("Folders"));
+    col_label.add_css_class("heading");
+    col_label.set_hexpand_set(true);
+    col_label.set_xalign(0.0);
+
+    let new_collection_btn = Button::builder()
+        .icon_name("folder-new-symbolic")
+        .css_classes(vec!["flat".to_string()])
+        .tooltip_markup("New Collections")
+        .build();
+
+    let collections_list = ListBox::new();
+    collections_list.add_css_class("navigation-sidebar");
+
+    let col_scroll = ScrolledWindow::builder()
+        .hscrollbar_policy(gtk::PolicyType::Never)
+        .child(&collections_list)
+        .vexpand_set(true)
+        .build();
+
+    collections_box.append(&col_toolbar);
+    collections_box.append(&col_scroll);
+
+    stack.add_titled(&collections_box, Some("collections"), "Collections");
+
+    let switcher = ViewSwitcher::builder()
+        .stack(&stack)
+        .policy(adw::ViewSwitcherPolicy::Wide)
+        .build();
+
+    container.append(&switcher);
+    container.append(&stack);
 
     (
         container,
         SidebarWidgets {
-            list_box,
+            history_list,
+            collections_list,
             clear_history_btn,
             new_request_btn,
+            new_collection_btn,
         },
     )
 }
@@ -85,6 +126,26 @@ pub fn add_history_row(list: &ListBox, method: &str, url: &str, id: i64) {
 
     row.set_child(Some(&row_box));
 
+    row.set_widget_name(&id.to_string());
+
+    list.append(&row);
+}
+
+pub fn add_collection_row(list: &ListBox, name: &str, id: i64) {
+    let row = ListBoxRow::new();
+    let row_box = Box::new(Orientation::Horizontal, config::SPACING_MEDIUM);
+    add_box_margins(&row_box, config::SPACING_MEDIUM);
+
+    let icon = gtk::Image::from_icon_name("folder-symbolic");
+
+    let name_label = Label::new(Some(name));
+    name_label.set_hexpand(true);
+    name_label.set_xalign(0.0);
+
+    row_box.append(&icon);
+    row_box.append(&name_label);
+
+    row.set_child(Some(&row_box));
     row.set_widget_name(&id.to_string());
 
     list.append(&row);

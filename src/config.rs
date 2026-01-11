@@ -5,7 +5,6 @@ pub const SIDEBAR_WIDTH_FRACTION: f64 = 0.25;
 pub const MIN_SIDEBAR_WIDTH: f64 = 220.0;
 pub const BREAKPOINT_WIDTH: f64 = 650.0;
 pub const REQUEST_PANE_POSITION: i32 = 250;
-pub const SIDEBAR_HISTORY_MIN_HEIGHT: i32 = 400;
 
 // Editor Styles
 pub const EDITOR_SCHEME_PREF_1: &str = "Adwaita-Dark";
@@ -27,6 +26,8 @@ pub const SPACING_NONE: i32 = 0;
 pub const SPACING_EXTRA_SMALL: i32 = 6;
 pub const SPACING_SMALL: i32 = 8;
 pub const SPACING_MEDIUM: i32 = 12;
+pub const SPACING_LARGE: i32 = 16;
+pub const SPACING_EXTRA_LARGE: i32 = 20;
 
 // CSS values
 pub const COLOR_GET: &str = "#61affe";

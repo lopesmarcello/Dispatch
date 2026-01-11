@@ -21,7 +21,7 @@ pub struct HistoryItem {
 #[derive(Debug)]
 pub struct Collection {
     pub id: i64,
-    pub name: String
+    pub name: String,
 }
 
 #[derive(Debug)]
@@ -70,7 +70,7 @@ impl Database {
             [],
         )?;
 
-       conn.execute(
+        conn.execute(
             "CREATE TABLE IF NOT EXISTS collection_items (
                 id INTEGER PRIMARY KEY,
                 collection_id INTEGER NOT NULL,
@@ -185,21 +185,37 @@ impl Database {
     }
 
     pub fn create_collection(&self, name: &str) -> Result<i64> {
-        self.conn.execute("INSERT INTO collections (name) VALUES (?1)", params![name])?;
+        self.conn
+            .execute("INSERT INTO collections (name) VALUES (?1)", params![name])?;
         Ok(self.conn.last_insert_rowid())
     }
 
     pub fn get_collections(&self) -> Result<Vec<Collection>> {
-        let mut stmt = self.conn.prepare("SELECT id, name FROM collections ORDER BY name ASC")?;
+        let mut stmt = self
+            .conn
+            .prepare("SELECT id, name FROM collections ORDER BY name ASC")?;
         let rows = stmt.query_map([], |row| {
-            Ok(Collection { id: row.get(0)?, name: row.get(1)? })
+            Ok(Collection {
+                id: row.get(0)?,
+                name: row.get(1)?,
+            })
         })?;
         let mut items = Vec::new();
-        for row in rows { items.push(row?); }
+        for row in rows {
+            items.push(row?);
+        }
         Ok(items)
     }
 
-    pub fn save_to_collection(&self, col_id: i64, name: &str, method: &str, url: &str, body: &str, headers: &str) -> Result<i64> {
+    pub fn save_to_collection(
+        &self,
+        col_id: i64,
+        name: &str,
+        method: &str,
+        url: &str,
+        body: &str,
+        headers: &str,
+    ) -> Result<i64> {
         self.conn.execute(
             "INSERT INTO collection_items (collection_id, name, method, url, body, headers) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
             params![col_id, name, method, url, body, headers],
@@ -221,7 +237,9 @@ impl Database {
             })
         })?;
         let mut items = Vec::new();
-        for row in rows { items.push(row?); }
+        for row in rows {
+            items.push(row?);
+        }
         Ok(items)
     }
 }
