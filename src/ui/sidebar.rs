@@ -56,6 +56,9 @@ pub fn build() -> (Box, SidebarWidgets) {
     history_box.append(&history_scrolled);
 
     stack.add_titled(&history_box, Some("history"), "History");
+    stack
+        .page("history")
+        .set_icon_name(Some("document-open-recent-symbolic"));
 
     // Collections
     let collections_box = Box::new(Orientation::Vertical, 0);

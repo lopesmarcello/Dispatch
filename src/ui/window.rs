@@ -11,9 +11,8 @@ use std::thread;
 use super::{request_bar, request_tabs, response_view, sidebar, status_bar};
 use crate::models::Method;
 use crate::state::Action;
-use crate::ui::helpers::{set_syntax_highlightin, show_input_dialog};
+use crate::ui::helpers::{set_syntax_highlighting, show_input_dialog};
 use crate::ui::key_value_editor::KeyValueEditor;
-use crate::ui::window;
 use crate::{api, config, database};
 
 #[derive(Clone)]
@@ -177,7 +176,7 @@ pub fn build(app: &Application) {
                     w.time_label.set_text(&item.time);
                     w.size_label.set_text(&item.size);
 
-                    set_syntax_highlightin(&w.response_buffer, &item.response_headers);
+                    set_syntax_highlighting(&w.response_buffer, &item.response_headers);
 
                     if item.status.starts_with("2") {
                         w.status_label.add_css_class(config::CLASS_SUCCESS);
