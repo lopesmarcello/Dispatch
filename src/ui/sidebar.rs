@@ -55,10 +55,8 @@ pub fn build() -> (Box, SidebarWidgets) {
     history_box.append(&history_toolbar);
     history_box.append(&history_scrolled);
 
-    stack.add_titled(&history_box, Some("history"), "History");
-    stack
-        .page("history")
-        .set_icon_name(Some("document-open-recent-symbolic"));
+    let history_page = stack.add_titled(&history_box, Some("history"), "History");
+    history_page.set_icon_name(Some("document-open-recent-symbolic"));
 
     // Collections
     let collections_box = Box::new(Orientation::Vertical, 0);
@@ -77,6 +75,9 @@ pub fn build() -> (Box, SidebarWidgets) {
         .tooltip_markup("New Collections")
         .build();
 
+    col_toolbar.append(&col_label);
+    col_toolbar.append(&new_collection_btn);
+
     let collections_list = ListBox::new();
     collections_list.add_css_class("navigation-sidebar");
 
@@ -89,7 +90,8 @@ pub fn build() -> (Box, SidebarWidgets) {
     collections_box.append(&col_toolbar);
     collections_box.append(&col_scroll);
 
-    stack.add_titled(&collections_box, Some("collections"), "Collections");
+    let collections_page = stack.add_titled(&collections_box, Some("collections"), "Collections");
+    collections_page.set_icon_name(Some("folder-symbolic"));
 
     let switcher = ViewSwitcher::builder()
         .stack(&stack)
