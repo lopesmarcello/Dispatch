@@ -1,9 +1,8 @@
 use super::sidebar;
 use crate::database;
 use crate::state::Action;
-use crate::ui::helpers::{self, show_input_dialog};
-use crate::ui::{layout, reducer, widgets};
-use adw::{Application, prelude::*};
+use crate::ui::{layout, reducer};
+use adw::{prelude::*, Application};
 use glib;
 use std::rc::Rc;
 
@@ -19,11 +18,6 @@ pub fn build(app: &Application) {
     if let Ok(history) = db.get_history() {
         for item in history.iter().rev() {
             sidebar::add_history_row(&widgets.history_list, &item.method, &item.url, item.id);
-        }
-    }
-    if let Ok(cols) = db.get_collections() {
-        for col in cols {
-            sidebar::add_collection_row(&widgets.collections_list, &col.name, col.id);
         }
     }
 
@@ -64,12 +58,6 @@ pub fn build(app: &Application) {
                 sender.send(Action::LoadHistoryItem(id)).unwrap();
             }
         }));
-
-    widgets.new_collection_btn.connect_clicked(glib::clone!(@strong sender, @strong window => move |_| {
-        helpers::show_input_dialog(&window, "New Collection", glib::clone!(@strong sender => move |name| {
-            sender.send(Action::CreateCollection(name)).unwrap();
-        }));
-    }));
 
     window.present();
 }

@@ -15,9 +15,7 @@ pub struct WindowWidgets {
     pub spinner: Spinner,
     pub headers_editor: KeyValueEditor,
     pub history_list: ListBox,
-    pub collections_list: ListBox,
     pub send_button: gtk::Button,
     pub new_request_btn: gtk::Button,
     pub clear_history_btn: gtk::Button,
-    pub new_collection_btn: gtk::Button,
 }

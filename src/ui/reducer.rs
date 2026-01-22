@@ -161,12 +161,5 @@ pub fn handle_action(
             let method = Method::from_index(w.method_dropdown.selected());
             sidebar::add_history_row(&w.history_list, method.as_str(), &url, id);
         }
-
-        Action::CreateCollection(name) => {
-            if let Ok(id) = db.create_collection(&name) {
-                sidebar::add_collection_row(&w.collections_list, &name, id);
-            }
-        }
-        _ => {}
     }
 }
