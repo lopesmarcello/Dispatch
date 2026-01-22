@@ -1,5 +1,5 @@
 use adw::{
-    Application, ApplicationWindow, Breakpoint, BreakpointCondition, OverlaySplitView, prelude::*,
+    prelude::*, Application, ApplicationWindow, Breakpoint, BreakpointCondition, OverlaySplitView,
 };
 use gtk::{Box, HeaderBar, Orientation};
 
@@ -49,11 +49,9 @@ pub fn build_ui(app: &Application) -> (ApplicationWindow, WindowWidgets) {
         spinner: status_widget.spinner,
         headers_editor,
         history_list: sidebar_widgets.history_list.clone(),
-        collections_list: sidebar_widgets.collections_list.clone(),
         send_button,
         new_request_btn: sidebar_widgets.new_request_btn,
         clear_history_btn: sidebar_widgets.clear_history_btn,
-        new_collection_btn: sidebar_widgets.new_collection_btn,
     };
 
     // ---  Window Creation---

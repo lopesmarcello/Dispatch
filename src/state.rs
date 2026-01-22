@@ -19,11 +19,4 @@ pub enum Action {
     RequestStarted,
     RequestCompleted(Result<ApiResponse, ApiError>),
     HistorySaved(i64),
-
-    // Collections
-    CreateCollection(String),
-    SelectCollection(i64),
-    SaveRequestToCollection {col_id: i64, name: String},
-    LoadCollectionItem(i64),
-
 }
