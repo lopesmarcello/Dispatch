@@ -1,5 +1,5 @@
 use directories::ProjectDirs;
-use rusqlite::{params, Connection, Result};
+use rusqlite::{Connection, Result, params};
 use std::fs;
 use std::path::PathBuf;
 
@@ -15,7 +15,6 @@ pub struct HistoryItem {
     pub status: String,
     pub time: String,
     pub size: String,
-    pub timestamp: String,
 }
 
 pub struct Database {
@@ -103,7 +102,6 @@ impl Database {
                 status: row.get(7).unwrap_or_default(),
                 time: row.get(8).unwrap_or_default(),
                 size: row.get(9).unwrap_or_default(),
-                timestamp: row.get(10)?,
             })
         })?;
 
@@ -129,7 +127,6 @@ impl Database {
                 status: row.get(7).unwrap_or_default(),
                 time: row.get(8).unwrap_or_default(),
                 size: row.get(9).unwrap_or_default(),
-                timestamp: row.get(10)?,
             })
         })?;
 

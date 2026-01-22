@@ -1,3 +1,5 @@
+#![allow(deprecated)]
+
 use crate::config;
 use gtk::gdk::Display;
 use gtk::{CssProvider, StyleContext};
